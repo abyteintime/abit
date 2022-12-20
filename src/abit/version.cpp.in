@@ -1,0 +1,13 @@
+#include "version.hpp"
+
+auto
+Version() -> const char*
+{
+	return "@ABIT_VERSION@";
+}
+
+auto
+VersionWide() -> const wchar_t*
+{
+	return L"@ABIT_VERSION@";
+}

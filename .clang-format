@@ -1,0 +1,13 @@
+BasedOnStyle: Mozilla
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 100
+UseTab: ForContinuationAndIndentation
+AlignAfterOpenBracket: BlockIndent
+AlignEscapedNewlines: DontAlign
+BinPackArguments: false
+BinPackParameters: false
+ContinuationIndentWidth: 4
+BreakConstructorInitializers: BeforeComma
+AllowAllArgumentsOnNextLine: true
+AccessModifierOffset: -4
