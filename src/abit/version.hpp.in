@@ -1,0 +1,10 @@
+#pragma once
+
+#include "abit.hpp"
+
+namespace abit {
+
+static const char* version = "@ABIT_VERSION@";
+static const wchar_t* versionWide = L"@ABIT_VERSION@";
+
+}

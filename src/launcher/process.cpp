@@ -16,7 +16,7 @@ Process::Process(std::wstring_view executablePath, std::wstring_view workingDire
 			nullptr,
 			nullptr,
 			true,
-			0,
+			CREATE_SUSPENDED,
 			nullptr,
 			workingDirectory.data(),
 			&startupInfo,
@@ -36,8 +36,8 @@ Process::~Process()
 	CloseHandle(threadHandle);
 }
 
-auto
-Process::WaitForExit() -> void
+void
+Process::WaitForExit()
 {
 	WaitForSingleObject(handle, INFINITE);
 }

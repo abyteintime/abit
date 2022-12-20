@@ -12,7 +12,7 @@ struct Process
 	Process(std::wstring_view executablePath, std::wstring_view workingDirectory);
 	~Process();
 
-	auto WaitForExit() -> void;
+	void WaitForExit();
 
 	HANDLE handle = nullptr;
 	HANDLE threadHandle = nullptr;

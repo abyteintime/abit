@@ -12,8 +12,8 @@ using namespace abit;
 
 static const char* configFileName = "ByteinTime.ini";
 
-auto
-Config::Load() -> Config
+Config
+Config::Load()
 {
 	Config config;
 
@@ -24,15 +24,15 @@ Config::Load() -> Config
 	return config;
 }
 
-auto
-Config::SaveDefault() -> void
+void
+Config::SaveDefault()
 {
 	std::ofstream outputStream{ configFileName };
 	outputStream << defaultConfigIni;
 }
 
-auto
-Config::LoadOrSaveDefault() -> Config
+Config
+Config::LoadOrSaveDefault()
 {
 	if (!std::filesystem::exists(configFileName)) {
 		SaveDefault();
@@ -40,8 +40,8 @@ Config::LoadOrSaveDefault() -> Config
 	return Load();
 }
 
-auto
-Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const char* pvalue) -> int
+int
+Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const char* pvalue)
 {
 	std::string_view section{ psection };
 	std::string_view key{ pkey };

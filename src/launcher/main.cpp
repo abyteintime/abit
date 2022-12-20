@@ -10,13 +10,15 @@
 #include "paths.hpp"
 #include "process.hpp"
 #include "string.hpp"
+#include "version.hpp"
 
 namespace abit {
 
-auto
-LauncherMain() -> void
+void
+LauncherMain()
 {
 	printf("Welcome to A Byte in Time, the Hat in Time hacking toolkit\n");
+	printf("Launcher version %s\n", version);
 
 	Config config = Config::LoadOrSaveDefault();
 	printf("Config loaded.\n");
@@ -78,9 +80,15 @@ LauncherMain() -> void
 	if (remoteThread == nullptr) {
 		throw Error::System("failed to create remote thread");
 	}
-	SetThreadDescription(remoteThread, L"A Byte in Time DLL injection/detour thread");
+	SetThreadDescription(remoteThread, L"A Byte in Time bootstrapping thread");
 	Defer closeRemoteThread([remoteThread]() { CloseHandle(remoteThread); });
 	printf("Successfully created remote thread (handle %p)\n", remoteThread);
+
+	printf("Waiting for remote thread to exit...\n");
+	WaitForSingleObject(remoteThread, INFINITE);
+
+	printf("Letting the game run freely now.\n");
+	ResumeThread(gameProcess.threadHandle);
 
 	printf("A Byte in Time should now be fully loaded into the game.\n");
 
@@ -89,8 +97,8 @@ LauncherMain() -> void
 
 }
 
-auto
-main() -> int
+int
+main()
 {
 	try {
 		abit::LauncherMain();

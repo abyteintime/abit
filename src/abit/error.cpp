@@ -7,8 +7,8 @@
 
 using namespace abit;
 
-auto
-Error::System(std::string_view _what) -> Error
+Error
+Error::System(std::string_view _what)
 {
 	int code = GetLastError();
 	return Error{ std::string(_what) + ": " + std::system_category().message(code) };

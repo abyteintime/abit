@@ -4,13 +4,13 @@
 
 namespace abit {
 
-auto
-GetGameExecutablePath(std::string_view installDirectory) -> std::wstring;
+std::wstring
+GetGameExecutablePath(std::string_view installDirectory);
 
-auto
-GetThisExecutablePath() -> std::wstring;
+std::wstring
+GetThisExecutablePath();
 
-auto
-GetLoaderDllPath() -> std::wstring;
+std::wstring
+GetLoaderDllPath();
 
 }

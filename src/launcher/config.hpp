@@ -13,15 +13,14 @@ struct Config
 		std::string executable;
 	} game;
 
-	static auto Load() -> Config;
-	static auto SaveDefault() -> void;
-	static auto LoadOrSaveDefault() -> Config;
+	static Config Load();
+	static void SaveDefault();
+	static Config LoadOrSaveDefault();
 
 	static const std::string_view defaultConfigIni;
 
 private:
-	static auto IniKeyHandler(void* user, const char* section, const char* key, const char* value)
-		-> int;
+	static int IniKeyHandler(void* user, const char* section, const char* key, const char* value);
 };
 
 }

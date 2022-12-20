@@ -8,14 +8,14 @@
 #include <filesystem>
 #include <string>
 
-auto
-abit::GetGameExecutablePath(std::string_view installDirectory) -> std::wstring
+std::wstring
+abit::GetGameExecutablePath(std::string_view installDirectory)
 {
 	return Widen(installDirectory) + L"\\Binaries\\Win64\\HatinTimeGame.exe";
 }
 
-auto
-abit::GetThisExecutablePath() -> std::wstring
+std::wstring
+abit::GetThisExecutablePath()
 {
 	std::wstring buffer{ 256, L'\0' };
 	size_t length = 0;
@@ -31,8 +31,8 @@ abit::GetThisExecutablePath() -> std::wstring
 	return buffer;
 }
 
-auto
-abit::GetLoaderDllPath() -> std::wstring
+std::wstring
+abit::GetLoaderDllPath()
 {
 	std::wstring thisExecutable = GetThisExecutablePath();
 	std::filesystem::path thisExecutablePath{ thisExecutable };
