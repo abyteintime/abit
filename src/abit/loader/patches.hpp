@@ -3,7 +3,7 @@
 #include <string_view>
 #include <type_traits>
 
-#include "proc.hpp"
+#include "abit/loader/proc.hpp"
 
 namespace abit {
 

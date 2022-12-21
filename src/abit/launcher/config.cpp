@@ -4,9 +4,9 @@
 #include <fstream>
 #include <iostream>
 
-#include "../lib/ini.h"
+#include "lib/ini.h"
 
-#include "error.hpp"
+#include "abit/error.hpp"
 
 using namespace abit;
 

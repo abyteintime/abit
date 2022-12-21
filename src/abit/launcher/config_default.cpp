@@ -1,4 +1,4 @@
-#include "config.hpp"
+#include "abit/launcher/config.hpp"
 
 using namespace abit;
 

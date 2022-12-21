@@ -1,13 +1,15 @@
 #pragma once
 
 #include <string>
-#include <string_view>
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 
 #include "abit/abit.hpp"
 
 namespace abit {
 
 ABIT_API std::wstring
-Widen(std::string_view string);
+GetExecutablePath(HINSTANCE instance = nullptr);
 
 }

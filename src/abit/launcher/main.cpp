@@ -4,13 +4,14 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#include "config.hpp"
-#include "defer.hpp"
-#include "error.hpp"
-#include "paths.hpp"
-#include "process.hpp"
-#include "string.hpp"
-#include "version.hpp"
+#include "abit/defer.hpp"
+#include "abit/error.hpp"
+#include "abit/string.hpp"
+#include "abit/version.hpp"
+
+#include "abit/launcher/config.hpp"
+#include "abit/launcher/paths.hpp"
+#include "abit/launcher/process.hpp"
 
 namespace abit {
 

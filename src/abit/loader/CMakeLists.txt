@@ -1,5 +1,6 @@
 set(ABIT_LOADER_SOURCES
 	"console.cpp"
+	"mod.cpp"
 	"patches.cpp"
 	"procs.cpp"
 
@@ -12,3 +13,4 @@ target_link_libraries(AByteInTime.Loader
 	inih
 	MinHook
 )
+target_include_directories(AByteInTime.Loader PUBLIC .)

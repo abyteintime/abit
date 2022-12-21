@@ -1,10 +1,11 @@
-#include "patches.hpp"
+#include "abit/loader/patches.hpp"
 
 #include "MinHook.h"
 
-#include "console.hpp"
-#include "error.hpp"
-#include "procs.hpp"
+#include "abit/error.hpp"
+
+#include "abit/loader/console.hpp"
+#include "abit/loader/procs.hpp"
 
 namespace abit {
 

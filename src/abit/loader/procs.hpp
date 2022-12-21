@@ -1,6 +1,6 @@
 #pragma once
 
-#include "proc.hpp"
+#include "abit/loader/proc.hpp"
 
 namespace abit::procs {
 

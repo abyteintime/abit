@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "abit.hpp"
+#include "abit/abit.hpp"
 
 namespace abit {
 

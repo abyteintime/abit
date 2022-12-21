@@ -8,9 +8,6 @@ std::wstring
 GetGameExecutablePath(std::string_view installDirectory);
 
 std::wstring
-GetThisExecutablePath();
-
-std::wstring
 GetLoaderDllPath();
 
 }

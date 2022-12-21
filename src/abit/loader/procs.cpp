@@ -1,4 +1,4 @@
-#include "procs.hpp"
+#include "abit/loader/procs.hpp"
 
 void* const abit::Proc::baseAddress = (void*)0x140000000;
 
