@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-std::wstring
+std::filesystem::path
 abit::GetExecutablePath(HINSTANCE instance)
 {
 	std::wstring buffer{ 256, L'\0' };
@@ -18,4 +18,10 @@ abit::GetExecutablePath(HINSTANCE instance)
 	}
 	buffer.resize(length);
 	return buffer;
+}
+
+std::filesystem::path
+abit::GetConfigPath(HINSTANCE instance)
+{
+	return GetExecutablePath(instance).parent_path().append("ByteinTime.ini");
 }

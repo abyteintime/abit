@@ -5,7 +5,6 @@
 #include "abit/error.hpp"
 
 #include "abit/loader/console.hpp"
-#include "abit/loader/procs.hpp"
 
 namespace abit {
 
@@ -23,10 +22,9 @@ static HANDLE executableBaseAddress;
 static void*
 GetFunctionAddressInExecutable(const Proc& proc)
 {
-	auto* baseAddress = reinterpret_cast<char*>(Proc::baseAddress);
-	auto* procAddress = reinterpret_cast<char*>(proc.address);
-	auto* execBaseAddress = reinterpret_cast<char*>(executableBaseAddress);
-	return reinterpret_cast<void*>(procAddress - baseAddress + execBaseAddress);
+	auto execBaseAddress = reinterpret_cast<ptrdiff_t>(executableBaseAddress);
+	auto procAddress = reinterpret_cast<ptrdiff_t>(proc.address);
+	return reinterpret_cast<void*>(execBaseAddress + procAddress);
 }
 
 }

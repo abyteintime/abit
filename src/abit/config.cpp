@@ -7,17 +7,21 @@
 #include "lib/ini.h"
 
 #include "abit/error.hpp"
+#include "abit/io.hpp"
+#include "abit/paths.hpp"
 
 using namespace abit;
 
 static const char* configFileName = "ByteinTime.ini";
 
 Config
-Config::Load()
+Config::Load(const std::filesystem::path& path)
 {
 	Config config;
 
-	if (ini_parse(configFileName, &Config::IniKeyHandler, &config) < 0) {
+	std::filesystem::path configPath = GetConfigPath();
+	std::vector<char> configFile = ReadFile(configPath);
+	if (ini_parse_string(&configFile[0], &Config::IniKeyHandler, &config) < 0) {
 		throw Error{ std::string{ "failed to load config file " } + configFileName };
 	}
 
@@ -25,19 +29,19 @@ Config::Load()
 }
 
 void
-Config::SaveDefault()
+Config::SaveDefault(const std::filesystem::path& path)
 {
-	std::ofstream outputStream{ configFileName };
+	std::ofstream outputStream{ path };
 	outputStream << defaultConfigIni;
 }
 
 Config
-Config::LoadOrSaveDefault()
+Config::LoadOrSaveDefault(const std::filesystem::path& path)
 {
-	if (!std::filesystem::exists(configFileName)) {
-		SaveDefault();
+	if (!std::filesystem::exists(path)) {
+		SaveDefault(path);
 	}
-	return Load();
+	return Load(path);
 }
 
 int
@@ -53,9 +57,11 @@ Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const 
 	};
 
 	if (match("Game", "Executable")) {
-		config->game.executable = std::string{ pvalue };
+		config->game.executable = value;
 	} else if (match("Game", "WorkingDirectory")) {
-		config->game.workingDirectory = std::string{ pvalue };
+		config->game.workingDirectory = value;
+	} else if (match("Mods", "+Disable")) {
+		config->mods.disable.insert(std::string{ value });
 	} else {
 		return false;
 	}

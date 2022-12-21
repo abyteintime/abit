@@ -7,18 +7,16 @@
 #include "abit/string.hpp"
 
 #include <filesystem>
-#include <string>
+#include <string_view>
 
-std::wstring
+std::filesystem::path
 abit::GetGameExecutablePath(std::string_view installDirectory)
 {
 	return Widen(installDirectory) + L"\\Binaries\\Win64\\HatinTimeGame.exe";
 }
 
-std::wstring
+std::filesystem::path
 abit::GetLoaderDllPath()
 {
-	std::wstring thisExecutable = GetExecutablePath();
-	std::filesystem::path thisExecutablePath{ thisExecutable };
-	return thisExecutablePath.parent_path().append(L"AByteInTime.Loader.dll");
+	return GetExecutablePath().parent_path().append(L"AByteInTime.Loader.dll");
 }

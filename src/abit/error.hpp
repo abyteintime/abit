@@ -10,6 +10,8 @@ struct ABIT_API Error
 {
 	std::string what;
 
+	Error(std::string what);
+
 	static Error System(std::string_view what);
 };
 

@@ -2,5 +2,6 @@
 /.cache
 /.vs
 /.vscode
+__pycache__
 
 ByteinTime.ini

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 namespace abit {
 
@@ -13,9 +15,14 @@ struct Config
 		std::string executable;
 	} game;
 
-	static Config Load();
-	static void SaveDefault();
-	static Config LoadOrSaveDefault();
+	struct Mods
+	{
+		std::unordered_set<std::string> disable;
+	} mods;
+
+	static Config Load(const std::filesystem::path& path);
+	static void SaveDefault(const std::filesystem::path& path);
+	static Config LoadOrSaveDefault(const std::filesystem::path& path);
 
 	static const std::string_view defaultConfigIni;
 

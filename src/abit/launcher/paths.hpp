@@ -1,13 +1,14 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 
 namespace abit {
 
-std::wstring
+std::filesystem::path
 GetGameExecutablePath(std::string_view installDirectory);
 
-std::wstring
+std::filesystem::path
 GetLoaderDllPath();
 
 }

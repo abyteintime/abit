@@ -14,7 +14,8 @@
 #include "abit/loader/console.hpp"
 #include "abit/loader/mod.hpp"
 #include "abit/loader/patches.hpp"
-#include "abit/loader/procs.hpp"
+
+#include "abit/procs/global.hpp"
 
 namespace abit {
 
@@ -90,7 +91,9 @@ LoaderInit()
 
 	PrintLine(L"Patching GuardedMainWrapper");
 	Patch(
-		procs::GuardedMainWrapper, &patches::GuardedMainWrapper, patches::originalGuardedMainWrapper
+		procs::global::GuardedMainWrapper,
+		&patches::GuardedMainWrapper,
+		patches::originalGuardedMainWrapper
 	);
 
 	PrintLine(L"LoaderInit done.");

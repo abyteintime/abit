@@ -6,10 +6,11 @@
 
 #include "abit/defer.hpp"
 #include "abit/error.hpp"
+#include "abit/paths.hpp"
 #include "abit/string.hpp"
 #include "abit/version.hpp"
 
-#include "abit/launcher/config.hpp"
+#include "abit/config.hpp"
 #include "abit/launcher/paths.hpp"
 #include "abit/launcher/process.hpp"
 
@@ -21,7 +22,9 @@ LauncherMain()
 	printf("Welcome to A Byte in Time, the Hat in Time hacking toolkit\n");
 	printf("Launcher version %s\n", version);
 
-	Config config = Config::LoadOrSaveDefault();
+	std::filesystem::path configPath = GetConfigPath();
+	printf("Looking for config at %ls\n", configPath.wstring().c_str());
+	Config config = Config::LoadOrSaveDefault(configPath);
 	printf("Config loaded.\n");
 
 	printf("Starting game...\n");

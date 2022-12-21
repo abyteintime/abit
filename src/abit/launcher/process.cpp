@@ -22,7 +22,7 @@ Process::Process(std::wstring_view executablePath, std::wstring_view workingDire
 			&startupInfo,
 			&processInfo
 		)) {
-		throw Error::System("could not start the game: ");
+		throw Error::System("could not start the game");
 	}
 	handle = processInfo.hProcess;
 	threadHandle = processInfo.hThread;

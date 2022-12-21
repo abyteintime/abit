@@ -7,6 +7,11 @@
 
 using namespace abit;
 
+Error::Error(std::string what)
+  : what(std::move(what))
+{
+}
+
 Error
 Error::System(std::string_view _what)
 {
