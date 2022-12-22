@@ -1,3 +1,6 @@
+// An example mod which changes the in-game speedrun timer to always show 4:20 (and also changes the
+// act timer to 21:37 because why not.)
+
 #include "abit/dll_macros.hpp"
 
 #include "abit/loader/console.hpp"
