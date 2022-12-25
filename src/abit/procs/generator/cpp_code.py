@@ -71,12 +71,18 @@ OPERATORS = {
     "_delete[]": "_operatorDeleteArray",
 }
 
-def function_symbol_to_identifier(name: str):
+def function_symbol_to_identifier(name: str, symbol: ghidra_output.Symbol, ambiguous: bool):
+    out_name = name
     if name.startswith('~'):
-        return "_destructor"
+        out_name = "_destructor"
     if name.startswith("operator"):
-        return OPERATORS.get(name.removeprefix("operator"), name)
-    return name
+        out_name = OPERATORS.get(name.removeprefix("operator"), name)
+
+    if ambiguous:
+        # This is kind of bad because symbol locations change between builds of Hat.
+        out_name = f"{out_name}_{symbol.location}"
+
+    return out_name
 
 Header = collections.namedtuple("Header", "namespace_identifier source_code")
 
@@ -97,15 +103,15 @@ def generate_header(namespace_name, namespace):
     namespace_identifier = namespace_symbol_to_identifier(namespace_name)
     assert_valid_identifier(namespace_name, namespace_identifier)
     builder.write(f"namespace abit::procs::{namespace_identifier} {{\n")
-    for symbol_name, symbol in namespace.items():
+    for symbol_name, overload_list in namespace.items():
         identifiers_in_scope = set()
-
-        symbol_identifier = function_symbol_to_identifier(symbol_name)
-        assert_valid_identifier(symbol_name, symbol_identifier)
-        assert symbol_identifier not in identifiers_in_scope, f"duplicated identifier '{symbol_identifier}' in namespace '{namespace}'"
-        identifiers_in_scope.add(symbol_identifier)
-
-        builder.write(f"ABIT_DLL_IMPORT extern abit::Proc {symbol_identifier};\n")
+        ambiguous = len(overload_list) > 1
+        for symbol in overload_list:
+            symbol_identifier = function_symbol_to_identifier(symbol_name, symbol, ambiguous)
+            assert_valid_identifier(symbol_name, symbol_identifier)
+            assert symbol_identifier not in identifiers_in_scope, f"duplicated identifier '{symbol_identifier}' in namespace '{namespace}'"
+            identifiers_in_scope.add(symbol_identifier)
+            builder.write(f"ABIT_DLL_IMPORT extern abit::Proc {symbol_identifier};\n")
     builder.write("}\n")
 
     return f"{namespace_identifier}.hpp", Header(namespace_identifier, source_code=builder.getvalue())
@@ -125,11 +131,13 @@ def generate_cpp(namespaces, headers):
         namespace_identifier = namespace_symbol_to_identifier(namespace_name)
         builder.write(f"namespace abit::procs::{namespace_identifier} {{\n")
 
-        for symbol_name, symbol in namespace.items():
-            symbol_identifier = function_symbol_to_identifier(symbol_name)
-            quoted_symbol = json.dumps(f"{namespace_name}::{symbol_name}")
-            location = int(symbol.location, 16) - ghidra_output.BASE_ADDRESS
-            builder.write(f"ABIT_DLL_EXPORT abit::Proc {symbol_identifier}{{ {quoted_symbol}, (void*)0x{location:x} }};\n")
+        for symbol_name, overload_list in namespace.items():
+            ambiguous = len(overload_list) > 1
+            for symbol in overload_list:
+                symbol_identifier = function_symbol_to_identifier(symbol_name, symbol, ambiguous)
+                quoted_symbol = json.dumps(f"{namespace_name}::{symbol.original_name}")
+                location = int(symbol.location, 16) - ghidra_output.BASE_ADDRESS
+                builder.write(f"ABIT_DLL_EXPORT abit::Proc {symbol_identifier}{{ {quoted_symbol}, (void*)0x{location:x} }};\n")
 
         builder.write("}\n\n")
 

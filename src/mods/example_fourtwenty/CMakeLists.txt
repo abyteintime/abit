@@ -5,7 +5,7 @@ set(EXAMPLE_FOURTWENTY_SOURCES
 add_library(Example.FourTwenty SHARED ${EXAMPLE_FOURTWENTY_SOURCES})
 target_link_libraries(Example.FourTwenty
 	AByteInTime.Common
-	AByteInTime.Loader
+	AByteInTime.Loader.API
 )
 set_target_properties(Example.FourTwenty PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${ABIT_MODS_DIRECTORY}

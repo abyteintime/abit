@@ -4,19 +4,32 @@
 
 namespace yarn {
 
-enum class Opcode : uint16_t
+enum class Opcode
 {
+	/** Loads a UProperty at the instruction pointer into GProperty and writes it to the return
+	   value address. */
 	LocalVariable = 0,
+	/** Loads a UProperty at the instruction pointer into GProperty; then reads an instance variable
+	   on the object into the return value address. */
 	InstanceVariable = 1,
+	/** Similar to InstanceVariable but reads from the class default object. */
 	DefaultVariable = 2,
 	StateVariable = 3,
 
+	/** Switch on a couple values. Not sure how this works quite yet. */
 	Switch = 5,
+	/** Unconditional jump to 16-bit address inside the current chunk of bytecode. */
 	Jump = 6,
+	/** Conditional jump to 16-bit address. The address is encoded first, followed by the condition
+	   instruction. */
 	JumpIfNot = 7,
+	/** Causes a crash, probably. Sets the IP to nullptr, not sure when that would be valid. */
 	Stop = 8,
+	/** Logs an error message if a condition is false. */
 	Assert = 9,
+	/** Probably a `switch` `case` label, again I haven't looked into how switches work. */
 	Case = 10,
+	/** Noop. */
 	Nothing = 11,
 
 	GotoLabel = 13,

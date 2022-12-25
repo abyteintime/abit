@@ -19,8 +19,7 @@ Config::Load(const std::filesystem::path& path)
 {
 	Config config;
 
-	std::filesystem::path configPath = GetConfigPath();
-	std::vector<char> configFile = ReadFile(configPath);
+	std::vector<char> configFile = ReadFile(path);
 	if (ini_parse_string(&configFile[0], &Config::IniKeyHandler, &config) < 0) {
 		throw Error{ std::string{ "failed to load config file " } + configFileName };
 	}
@@ -44,6 +43,16 @@ Config::LoadOrSaveDefault(const std::filesystem::path& path)
 	return Load(path);
 }
 
+bool
+Config::ParseBool(std::string_view string)
+{
+	if (string == "true" || string == "yes" || string == "1") {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 int
 Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const char* pvalue)
 {
@@ -60,6 +69,8 @@ Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const 
 		config->game.executable = value;
 	} else if (match("Game", "WorkingDirectory")) {
 		config->game.workingDirectory = value;
+	} else if (match("Debug", "WaitForDebugger")) {
+		config->debug.waitForDebugger = ParseBool(value);
 	} else if (match("Mods", "+Disable")) {
 		config->mods.disable.insert(std::string{ value });
 	} else {

@@ -17,8 +17,6 @@ CheckMinHookStatus(MH_STATUS status, F&& context)
 	}
 }
 
-static HANDLE executableBaseAddress;
-
 static void*
 GetFunctionAddressInExecutable(const Proc& proc)
 {

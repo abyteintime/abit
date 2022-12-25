@@ -6,6 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "abit/config.hpp"
 #include "abit/error.hpp"
 #include "abit/paths.hpp"
 #include "abit/string.hpp"
@@ -16,18 +17,19 @@
 #include "abit/loader/patches.hpp"
 
 #include "abit/procs/global.hpp"
+#include "abit/procs/init.hpp"
 
 namespace abit {
 
 HINSTANCE loaderDllHandle;
 
+Config config;
 std::vector<Mod> loadedMods;
 
 void
 ModsInit()
 {
-	std::wstring loaderDllPathString = abit::GetExecutablePath(loaderDllHandle);
-	std::filesystem::path loaderDllPath{ loaderDllPathString };
+	std::filesystem::path loaderDllPath = abit::GetExecutablePath(loaderDllHandle);
 	std::filesystem::path nativeModsDirectory = loaderDllPath.parent_path().append("NativeMods");
 
 	if (!std::filesystem::is_directory(nativeModsDirectory)) {
@@ -42,17 +44,21 @@ ModsInit()
 		const std::filesystem::path& path = directoryEntry.path();
 		if (path.extension() == L".dll") {
 			std::wstring modName = path.stem().wstring();
-			PrintLine(std::wstring(L"Loading ") + modName);
-			std::wstring absoluteDllPath = std::filesystem::absolute(path).wstring();
-			try {
-				Mod mod{ absoluteDllPath };
-				mod.CallModInit();
-				loadedMods.push_back(std::move(mod));
-			} catch (abit::Error error) {
-				PrintLine(
-					std::wstring(L"ERROR: Mod ") + modName + L" failed to load: " +
-					abit::Widen(error.what)
-				);
+			if (!config.mods.disable.count(abit::Narrow(modName))) {
+				PrintLine(std::wstring(L"Loading ") + modName);
+				std::wstring absoluteDllPath = std::filesystem::absolute(path).wstring();
+				try {
+					Mod mod{ absoluteDllPath };
+					mod.CallModInit();
+					loadedMods.push_back(std::move(mod));
+				} catch (abit::Error error) {
+					PrintLine(
+						std::wstring(L"ERROR: Mod ") + modName + L" failed to load: " +
+						abit::Widen(error.what)
+					);
+				}
+			} else {
+				PrintLine(std::wstring(L"Loading ") + modName + L" SKIPPED (mod is disabled)");
 			}
 		}
 	}
@@ -60,11 +66,34 @@ ModsInit()
 
 namespace patches {
 
-using GuardedMainWrapperType = int __cdecl (*)(wchar_t*, HINSTANCE, HINSTANCE, int);
+using GuardedMainWrapperType = int(__cdecl*)(wchar_t*, HINSTANCE, HINSTANCE, int);
 GuardedMainWrapperType originalGuardedMainWrapper = nullptr;
 int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 {
 	PrintLine(L"GuardedMainWrapper was patched successfully! \\o/");
+
+	std::filesystem::path configPath = GetConfigPath(loaderDllHandle);
+	abit::PrintLine(std::wstring(L"Loading config from ") + configPath.wstring());
+	config = Config::Load(configPath);
+
+	if (config.debug.waitForDebugger) {
+		abit::PrintLine(L"Waiting for debugger to attach...");
+		uint32_t ticksWaited = 0;
+		while (!IsDebuggerPresent()) {
+			Sleep(250);
+			ticksWaited += 1;
+			// If the user takes more than 10 seconds, let them know that we're not frozen.
+			if (ticksWaited == 40) {
+				abit::PrintLine(L"Still waiting...");
+			} else if (ticksWaited == 60) {
+				abit::PrintLine(L"\nNOTE: If you're confused by this, check your ByteinTime.ini.");
+				abit::PrintLine(
+					L"You may have accidentally set the [Debug] WaitForDebugger key to true."
+				);
+			}
+		}
+	}
+
 	PrintLine(L"We're now ready to load native mods.");
 
 	try {
@@ -85,6 +114,9 @@ LoaderInit()
 {
 	InitializeConsole();
 	PrintLine(std::wstring(L"A Byte in Time Loader version ") + versionWide);
+
+	PrintLine(L"Initializing procs library");
+	InitializeProcs();
 
 	PrintLine(L"Initializing patching library");
 	InitializePatches();

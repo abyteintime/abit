@@ -9,5 +9,10 @@ add_custom_command(
 	VERBATIM
 )
 
-add_library(AByteInTime.Procs SHARED "procs.cpp")
+set(ABIT_PROCS_SOURCES
+	"init.cpp"
+	"procs.cpp"
+)
+
+add_library(AByteInTime.Procs SHARED ${ABIT_PROCS_SOURCES})
 target_include_directories(AByteInTime.Procs PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)

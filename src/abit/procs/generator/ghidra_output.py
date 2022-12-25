@@ -1,7 +1,7 @@
 import collections
 import csv
 
-Symbol = collections.namedtuple("Row", "location")
+Symbol = collections.namedtuple("Row", "original_name location")
 
 def load_symbols(file):
     namespaces = {}
@@ -11,7 +11,10 @@ def load_symbols(file):
     for row in reader:
         [namespace, name, location, *_] = row
         namespace_dict = namespaces.get(namespace, {})
-        namespace_dict[name] = Symbol(location)
+        overload_list = namespace_dict.get(name, [])
+        symbol = Symbol(name, location)
+        overload_list.append(symbol)
+        namespace_dict[name] = overload_list
         namespaces[namespace] = namespace_dict
 
     return namespaces

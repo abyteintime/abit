@@ -2,6 +2,9 @@
 
 #include <string_view>
 
+#include "fmt/format.h"
+#include "fmt/os.h"
+
 namespace abit {
 
 void

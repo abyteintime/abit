@@ -12,16 +12,45 @@ abit::Widen(std::string_view string)
 		return L"";
 	}
 
-	int size_needed =
+	int sizeNeeded =
 		MultiByteToWideChar(CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), nullptr, 0);
-	if (size_needed <= 0) {
+	if (sizeNeeded <= 0) {
 		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " } +
-					 std::to_string(size_needed) };
+					 std::to_string(sizeNeeded) };
 	}
 
-	std::wstring result(size_needed, 0);
+	std::wstring result(sizeNeeded, 0);
 	MultiByteToWideChar(
-		CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), &result.at(0), size_needed
+		CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), &result.at(0), sizeNeeded
+	);
+	return result;
+}
+
+std::string
+abit::Narrow(std::wstring_view string)
+{
+	if (string.empty()) {
+		return "";
+	}
+
+	int sizeNeeded = WideCharToMultiByte(
+		CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), nullptr, 0, nullptr, nullptr
+	);
+	if (sizeNeeded <= 0) {
+		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " } +
+					 std::to_string(sizeNeeded) };
+	}
+
+	std::string result(sizeNeeded, 0);
+	WideCharToMultiByte(
+		CP_UTF8,
+		0,
+		&string.at(0),
+		static_cast<int>(string.size()),
+		&result.at(0),
+		sizeNeeded,
+		nullptr,
+		nullptr
 	);
 	return result;
 }

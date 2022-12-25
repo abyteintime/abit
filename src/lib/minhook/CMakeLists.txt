@@ -8,6 +8,5 @@ set(MINHOOK_SOURCES
 	"src/trampoline.c"
 )
 
-add_compile_options(-dM)
 add_library(MinHook STATIC ${MINHOOK_SOURCES})
 target_include_directories(MinHook PUBLIC ${MINHOOK_INCLUDE})

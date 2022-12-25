@@ -15,6 +15,11 @@ struct Config
 		std::string executable;
 	} game;
 
+	struct Debug
+	{
+		bool waitForDebugger = false;
+	} debug;
+
 	struct Mods
 	{
 		std::unordered_set<std::string> disable;
@@ -23,6 +28,8 @@ struct Config
 	static Config Load(const std::filesystem::path& path);
 	static void SaveDefault(const std::filesystem::path& path);
 	static Config LoadOrSaveDefault(const std::filesystem::path& path);
+
+	static bool ParseBool(std::string_view string);
 
 	static const std::string_view defaultConfigIni;
 
