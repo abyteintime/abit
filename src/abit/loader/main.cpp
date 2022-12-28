@@ -12,12 +12,15 @@
 #include "abit/string.hpp"
 #include "abit/version.hpp"
 
-#include "abit/loader/console.hpp"
+#include "abit/loader/logging.hpp"
+#include "abit/loader/logging_init.hpp"
 #include "abit/loader/mod.hpp"
 #include "abit/loader/patches.hpp"
 
 #include "abit/procs/global.hpp"
 #include "abit/procs/init.hpp"
+
+#include "spdlog/sinks/sink.h"
 
 namespace abit {
 
@@ -43,68 +46,58 @@ ModsInit()
 
 		const std::filesystem::path& path = directoryEntry.path();
 		if (path.extension() == L".dll") {
-			std::wstring modName = path.stem().wstring();
-			if (!config.mods.disable.count(abit::Narrow(modName))) {
-				PrintLine(std::wstring(L"Loading ") + modName);
+			std::string modName = abit::Narrow(path.stem().wstring());
+			if (!config.mods.disable.count(modName)) {
+				spdlog::info("Loading {}", modName);
 				std::wstring absoluteDllPath = std::filesystem::absolute(path).wstring();
 				try {
 					Mod mod{ absoluteDllPath };
 					mod.CallModInit();
 					loadedMods.push_back(std::move(mod));
 				} catch (abit::Error error) {
-					PrintLine(
-						std::wstring(L"ERROR: Mod ") + modName + L" failed to load: " +
-						abit::Widen(error.what)
-					);
+					spdlog::error("Mod {} failed to load: {}", modName, error.what);
 				}
 			} else {
-				PrintLine(std::wstring(L"Loading ") + modName + L" SKIPPED (mod is disabled)");
+				spdlog::info("Loading {} SKIPPED (mod is disabled)", modName);
 			}
 		}
 	}
 }
 
+void
+ModsDeinit()
+{
+	loadedMods.clear();
+}
+
 namespace patches {
 
 using GuardedMainWrapperType = int(__cdecl*)(wchar_t*, HINSTANCE, HINSTANCE, int);
-GuardedMainWrapperType originalGuardedMainWrapper = nullptr;
+GuardedMainWrapperType O_GuardedMainWrapper = nullptr;
 int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 {
-	PrintLine(L"GuardedMainWrapper was patched successfully! \\o/");
+	spdlog::debug("GuardedMainWrapper was patched successfully! \\o/");
 
-	std::filesystem::path configPath = GetConfigPath(loaderDllHandle);
-	abit::PrintLine(std::wstring(L"Loading config from ") + configPath.wstring());
-	config = Config::Load(configPath);
-
-	if (config.debug.waitForDebugger) {
-		abit::PrintLine(L"Waiting for debugger to attach...");
-		uint32_t ticksWaited = 0;
-		while (!IsDebuggerPresent()) {
-			Sleep(250);
-			ticksWaited += 1;
-			// If the user takes more than 10 seconds, let them know that we're not frozen.
-			if (ticksWaited == 40) {
-				abit::PrintLine(L"Still waiting...");
-			} else if (ticksWaited == 60) {
-				abit::PrintLine(L"\nNOTE: If you're confused by this, check your ByteinTime.ini.");
-				abit::PrintLine(
-					L"You may have accidentally set the [Debug] WaitForDebugger key to true."
-				);
-			}
-		}
-	}
-
-	PrintLine(L"We're now ready to load native mods.");
+	spdlog::debug("We're now ready to load native mods.");
 
 	try {
 		ModsInit();
 	} catch (abit::Error error) {
-		PrintLine(std::wstring(L"ERROR (in abit::ModsInit): ") + abit::Widen(error.what));
-		PrintLine(L"NOTE: Due to this error, native mod functionality may be partially or "
-				  L"completely unavailable.");
+		spdlog::error("in abit::ModsInit: {}", error.what);
+		spdlog::error("NOTE: Due to this error, native mod functionality may be partially or "
+					  "completely unavailable.");
 	}
 
-	return originalGuardedMainWrapper(a, b, c, d);
+	int result = O_GuardedMainWrapper(a, b, c, d);
+
+	try {
+		ModsDeinit();
+	} catch (abit::Error error) {
+		spdlog::error("in abit::ModsDeinit: {}", error.what);
+	}
+	abit::DeinitializeLogging();
+
+	return result;
 }
 
 }
@@ -112,23 +105,48 @@ int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 void
 LoaderInit()
 {
-	InitializeConsole();
-	PrintLine(std::wstring(L"A Byte in Time Loader version ") + versionWide);
+	InitializeLogging();
+	spdlog::info("A Byte in Time Loader version {}", version);
 
-	PrintLine(L"Initializing procs library");
+	std::filesystem::path configPath = GetConfigPath(loaderDllHandle);
+	spdlog::info(L"Config file: {}", configPath.wstring());
+	config = Config::Load(configPath);
+
+	if (config.debug.waitForDebugger) {
+		spdlog::info("Waiting for debugger to attach...");
+		uint32_t ticksWaited = 0;
+		while (!IsDebuggerPresent()) {
+			Sleep(250);
+			ticksWaited += 1;
+			if (ticksWaited == 40) {
+				// If the user takes more than 10 seconds, let them know that we're not frozen.
+				spdlog::info("Still waiting...");
+			} else if (ticksWaited == 60) {
+				spdlog::info(
+					"NOTE: If you're confused by this, check your ByteinTime.ini. "
+					"You may have accidentally set the [Debug] WaitForDebugger key to true."
+				);
+			}
+		}
+	}
+
+	GetFileSink()->set_level(spdlog::level::from_str(config.log.fileLevel));
+	GetConsoleSink()->set_level(spdlog::level::from_str(config.log.consoleLevel));
+
+	spdlog::debug("Initializing procs library");
 	InitializeProcs();
 
-	PrintLine(L"Initializing patching library");
+	spdlog::debug("Initializing patching library");
 	InitializePatches();
 
-	PrintLine(L"Patching GuardedMainWrapper");
+	spdlog::debug("Patching GuardedMainWrapper");
 	Patch(
 		procs::global::GuardedMainWrapper,
 		&patches::GuardedMainWrapper,
-		patches::originalGuardedMainWrapper
+		patches::O_GuardedMainWrapper
 	);
 
-	PrintLine(L"LoaderInit done.");
+	spdlog::debug("LoaderInit done.");
 }
 
 }
@@ -143,9 +161,7 @@ DllMain(HINSTANCE inDll, DWORD callReason, LPVOID)
 		try {
 			abit::LoaderInit();
 		} catch (abit::Error error) {
-			std::wstring message =
-				std::wstring(L"ERROR (during abit::LoaderInit): ") + abit::Widen(error.what);
-			abit::PrintLine(message);
+			spdlog::error("in abit::LoaderInit: {}", error.what);
 			return false;
 		}
 	}

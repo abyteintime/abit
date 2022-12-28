@@ -3,7 +3,7 @@
 
 #include "abit/dll_macros.hpp"
 
-#include "abit/loader/console.hpp"
+#include "abit/loader/logging.hpp"
 #include "abit/loader/patches.hpp"
 
 #include "abit/procs/UHat_GlobalTimer.hpp"
@@ -25,5 +25,5 @@ ABiT_ModInit()
 {
 	abit::Patch(abit::procs::UHat_GlobalTimer::GetGameTime, GetGameTime, O_GetGameTime);
 	abit::Patch(abit::procs::UHat_GlobalTimer::GetActTime, GetActTime, O_GetActTime);
-	abit::PrintLine(L"Your speedrun timer now shows 4:20.");
+	spdlog::info("Your speedrun timer now shows 4:20.");
 }

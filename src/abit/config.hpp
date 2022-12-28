@@ -15,15 +15,21 @@ struct Config
 		std::string executable;
 	} game;
 
-	struct Debug
-	{
-		bool waitForDebugger = false;
-	} debug;
-
 	struct Mods
 	{
 		std::unordered_set<std::string> disable;
 	} mods;
+
+	struct Log
+	{
+		std::string fileLevel;
+		std::string consoleLevel;
+	} log;
+
+	struct Debug
+	{
+		bool waitForDebugger = false;
+	} debug;
 
 	static Config Load(const std::filesystem::path& path);
 	static void SaveDefault(const std::filesystem::path& path);

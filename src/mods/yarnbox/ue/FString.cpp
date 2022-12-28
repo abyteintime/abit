@@ -15,3 +15,9 @@ ue::FString::~FString()
 {
 	abit::procs::FString::_destructor.Call<abit::ThisCall, void>(this);
 }
+
+std::wstring_view
+ue::FString::to_wstring_view() const
+{
+	return std::wstring_view{ dataPtr, size_t(length) };
+}

@@ -7,13 +7,13 @@
 
 namespace ue {
 
-struct UStruct : UObject
+struct UStruct : public UObject
 {
-	const struct VTable
+	struct VTable
 	{
 		yarn::UnknownFunction unknown[0x50];
 		void(__thiscall* SerializeExpr)(UStruct*, int*, FArchive*);
-	}* vtable;
+	};
 };
 
 }

@@ -1,5 +1,5 @@
 set(ABIT_LOADER_API_SOURCES
-	"console.cpp"
+	"logging_init.cpp"
 	"mod.cpp"
 	"patches.cpp"
 )
@@ -9,7 +9,7 @@ target_link_libraries(AByteInTime.Loader.API
 	AByteInTime.Common
 	AByteInTime.Procs
 	MinHook
-	fmt
+	spdlog::spdlog
 )
 target_include_directories(AByteInTime.Loader.API PUBLIC .)
 

@@ -11,7 +11,7 @@ struct FArchive
 	struct VTable
 	{
 		yarn::UnknownFunction scalarDeletingDestructor;
-		void(__thiscall* Serialize)(void* data, int64_t storageSize);
+		void(__thiscall* Serialize)(FArchive* self, void* data, int64_t storageSize);
 		yarn::UnknownFunction SerializeBits;
 		yarn::UnknownFunction SerializeInt;
 		yarn::UnknownFunction unknown1;
@@ -39,6 +39,10 @@ struct FArchive
 		yarn::UnknownFunction IsFilterEditorOnly;
 		yarn::UnknownFunction unknown13;
 	}* vtable;
+
+	int32_t version;
+	char unknown[64];
+	bool dataOnly;
 };
 
 }

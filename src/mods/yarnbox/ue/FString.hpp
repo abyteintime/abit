@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace ue {
 
@@ -15,6 +16,8 @@ struct FString
 
 	FString(FString&&);
 	~FString();
+
+	std::wstring_view to_wstring_view() const;
 };
 
 }

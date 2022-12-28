@@ -24,7 +24,7 @@ Mod::Mod(const std::filesystem::path& dllPath)
 Mod::~Mod()
 {
 	if (dll != nullptr) {
-		CloseHandle(dll);
+		FreeLibrary(dll);
 	}
 }
 

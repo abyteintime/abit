@@ -69,10 +69,14 @@ Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const 
 		config->game.executable = value;
 	} else if (match("Game", "WorkingDirectory")) {
 		config->game.workingDirectory = value;
-	} else if (match("Debug", "WaitForDebugger")) {
-		config->debug.waitForDebugger = ParseBool(value);
 	} else if (match("Mods", "+Disable")) {
 		config->mods.disable.insert(std::string{ value });
+	} else if (match("Log", "FileLevel")) {
+		config->log.fileLevel = value;
+	} else if (match("Log", "ConsoleLevel")) {
+		config->log.consoleLevel = value;
+	} else if (match("Debug", "WaitForDebugger")) {
+		config->debug.waitForDebugger = ParseBool(value);
 	} else {
 		return false;
 	}

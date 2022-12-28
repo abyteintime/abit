@@ -4,7 +4,7 @@
 
 #include "abit/error.hpp"
 
-#include "abit/loader/console.hpp"
+#include "abit/loader/logging.hpp"
 
 namespace abit {
 
