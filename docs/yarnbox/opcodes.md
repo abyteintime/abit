@@ -29,10 +29,7 @@ u64 <- byte byte byte byte byte byte byte byte
 
 ptr <- u64
 
-lowOpcode <- {
-  0 .. 3, 5 .. 11, 13 .. 20, 22, 23, 25 .. 42, 44 .. 48, 50 .. 75, 81 .. 90, 112 .. 199, 201, 203,
-  210 .. 232, 234 .. 238, 242 .. 247, 249 .. 255
-}
+lowOpcode <- {0 .. 95, 112 .. 255}
 highNative <- {96 .. 111}
 opcode <- lowOpcode | highNative byte
 
