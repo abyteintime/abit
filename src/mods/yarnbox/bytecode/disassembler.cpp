@@ -16,11 +16,16 @@ Disassembler::Disassemble()
 {
 	Opcode opcode = NextOpcode();
 	switch (opcode) {
+		case Opcode::Nothing:
+		case Opcode::EndOfScript:
+			return outTree->AppendNode({ ip, opcode });
+
 		default:
 			spdlog::warn(
-				"Disassembling opcode {} is not supported. Remaining bytecode will be skipped. "
-				"Patches applied to this chunk may be incomplete",
-				OpcodeToString(opcode)
+				"Disassembling opcode '{}' ({}) is not supported. Remaining bytecode will be "
+				"skipped. Patches applied to this chunk may be incomplete",
+				OpcodeToString(opcode),
+				static_cast<uint32_t>(opcode)
 			);
 			return outTree->AppendNode({ ip, Opcode::Unknown });
 	}

@@ -2,8 +2,6 @@
 
 using namespace yarn;
 
-BytecodeTree::BytecodeTree(const uint8_t* bytecode, size_t length) {}
-
 BytecodeTree::NodeIndex
 BytecodeTree::AppendNode(Node node)
 {

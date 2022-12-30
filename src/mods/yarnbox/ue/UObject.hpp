@@ -16,7 +16,7 @@ struct UObject
 	void* ptr2_U;
 	void* ptr3_U;
 	void* ptr4_U;
-	void* autoRegister;
+	uint64_t int2_U;
 	int32_t objectIndex;
 	int32_t int_U;
 	UObject* outer;

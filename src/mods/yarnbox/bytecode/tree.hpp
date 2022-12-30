@@ -18,8 +18,6 @@ struct BytecodeTree
 
 	std::vector<Node> nodes;
 
-	BytecodeTree(const uint8_t* bytecode, size_t length);
-
 	NodeIndex AppendNode(Node node);
 };
 

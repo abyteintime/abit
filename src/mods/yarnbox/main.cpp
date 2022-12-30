@@ -1,5 +1,6 @@
 #include "abit/dll_macros.hpp"
 
+#include <memory>
 #include <unordered_map>
 
 #include "fmt/ranges.h"
@@ -25,43 +26,42 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-struct DisassembledFunction
-{
-	ue::UFunction* ufunction;
-	yarn::BytecodeTree tree;
-};
-
-struct DisassembledUStruct
-{
-	ue::UStruct* ustruct;
-	std::unordered_map<std::string, DisassembledFunction> functions;
-};
+static size_t attemptedDisassemblies = 0;
+static size_t functionsSuccessfullyDisassembled = 0;
 
 static void (*O_UStruct_Serialize)(ue::UStruct*, ue::FArchive*);
 static void
 UStruct_Serialize(ue::UStruct* self, ue::FArchive* ar)
 {
-	ue::FString name;
-	self->GetName(name);
+
 	O_UStruct_Serialize(self, ar);
-	if (self->objectClass == ue::UStruct::StaticClass() ||
-		self->objectClass == ue::UClass::StaticClass()) {
-		spdlog::info(L"UStruct: {}", name.ToWstringView(), ar->dataOnly);
+
+	if (self->objectClass == ue::UFunction::StaticClass()) {
+		ue::FString name = self->GetName();
+
+		spdlog::info(L"UFunction: {}", name.ToWstringView());
 		spdlog::debug("- objectFlags: {:b}", int32_t(self->objectFlags));
 		spdlog::debug("- objectIndex: {}", self->objectIndex);
-		spdlog::debug("- autoRegister: {}", self->autoRegister);
 		spdlog::debug("- objectClass: {:ip}", ue::UObjectFmt{ self->objectClass });
 		spdlog::debug("- outer: {:ip}", ue::UObjectFmt{ self->outer });
-		spdlog::debug("- parentType: {:ip}", ue::UObjectFmt{ self->parentType });
 		spdlog::debug("- bytecode: {}", self->bytecode.Range());
+
+		yarn::BytecodeTree tree;
+		yarn::Disassembler disassembler{ self->bytecode.dataPtr,
+										 size_t(self->bytecode.length),
+										 tree };
+		bool success = true;
+		while (!disassembler.AtEnd()) {
+			auto nodeIndex = disassembler.Disassemble();
+			if (tree.nodes[nodeIndex].opcode == yarn::Opcode::Unknown) {
+				success = false;
+				break;
+			}
+		}
+		attemptedDisassemblies += 1;
+		functionsSuccessfullyDisassembled += success;
+		spdlog::debug("Disassembled bytecode into {} nodes", tree.nodes.size());
 	}
-	// spdlog::debug("- ptr1_U: {}", self->ptr1_U);
-	// spdlog::debug("- ptr2_U: {}", self->ptr2_U);
-	// spdlog::debug("- ptr3_U: {}", self->ptr3_U);
-	// spdlog::debug("- ptr4_U: {}", self->ptr4_U);
-	// spdlog::debug("- ptr6_U: {}", self->ptr6_U);
-	// spdlog::debug("- ptr7_U: {}", self->ptr7_U);
-	// spdlog::debug("- int_U: {}", self->int_U);
 }
 
 extern "C" ABIT_DLL_EXPORT void
