@@ -9,62 +9,45 @@
 
 #include "yarnbox/ue/FArchive.hpp"
 #include "yarnbox/ue/FString.hpp"
+#include "yarnbox/ue/UClass.hpp"
 #include "yarnbox/ue/UObject.hpp"
+#include "yarnbox/ue/UObject/fmt.hpp"
 #include "yarnbox/ue/UStruct.hpp"
 #include "yarnbox/vm/opcode.hpp"
+
+#include "fmt/ranges.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 using EExprToken = yarn::Opcode;
 
-static void __thiscall Serialize_Override(ue::FArchive* ar, void* data, int64_t size);
-
-struct VTable : public ue::FArchive::VTable
-{
-	int unused_somePaddingJustInCase[16];
-	int callCounter = 0;
-	void(__thiscall* O_Serialize)(ue::FArchive* ar, void* data, int64_t size);
-
-	VTable(const ue::FArchive::VTable& base)
-	  : ue::FArchive::VTable(base)
-	{
-		O_Serialize = base.Serialize;
-		Serialize = Serialize_Override;
-	}
-};
-
-static void __thiscall Serialize_Override(ue::FArchive* ar, void* data, int64_t size)
-{
-	VTable* goodVtable = (VTable*)ar->vtable;
-	goodVtable->callCounter += 1;
-	if (goodVtable->O_Serialize == &Serialize_Override) {
-		spdlog::error("O_Serialize was set to Serialize_Override and would call itself recursively"
-		);
-		return;
-	}
-	(goodVtable->O_Serialize)(ar, data, size);
-}
-
-static void(__thiscall* O_UObject_Serialize)(ue::UObject*, ue::FArchive*);
-static void __thiscall UObject_Serialize(ue::UObject* self, ue::FArchive* ar)
+static void(__thiscall* O_UStruct_Serialize)(ue::UStruct*, ue::FArchive*);
+static void __thiscall UStruct_Serialize(ue::UStruct* self, ue::FArchive* ar)
 {
 	ue::FString name;
-	ue::UObject::GetName(self, &name);
-	spdlog::info(L"UObject: {}\tDataOnly={}", name.to_wstring_view(), ar->dataOnly);
+	self->GetName(name);
+	spdlog::info(L"UStruct: {}", name.ToWstringView(), ar->dataOnly);
 
-	ue::FArchive::VTable* oldVtable = ar->vtable;
-	VTable sus(*oldVtable);
-	ar->vtable = &sus;
+	O_UStruct_Serialize(self, ar);
 
-	O_UObject_Serialize(self, ar);
-
-	ar->vtable = oldVtable;
-	spdlog::debug("    {} calls to Serialize were made", sus.callCounter);
+	spdlog::debug("- objectFlags: {:b}", int32_t(self->objectFlags));
+	spdlog::debug("- objectIndex: {}", self->objectIndex);
+	spdlog::debug("- autoRegister: {}", self->autoRegister);
+	spdlog::debug("- objectClass: {:ip}", ue::UObjectFmt{ self->objectClass });
+	spdlog::debug("- outer: {:ip}", ue::UObjectFmt{ self->outer });
+	spdlog::debug("- bytecode: {}", self->bytecode.Range());
+	// spdlog::debug("- ptr1_U: {}", self->ptr1_U);
+	// spdlog::debug("- ptr2_U: {}", self->ptr2_U);
+	// spdlog::debug("- ptr3_U: {}", self->ptr3_U);
+	// spdlog::debug("- ptr4_U: {}", self->ptr4_U);
+	// spdlog::debug("- ptr6_U: {}", self->ptr6_U);
+	// spdlog::debug("- ptr7_U: {}", self->ptr7_U);
+	// spdlog::debug("- int_U: {}", self->int_U);
 }
 
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
-	abit::Patch(abit::procs::UObject::Serialize, &UObject_Serialize, O_UObject_Serialize);
+	abit::Patch(abit::procs::UStruct::Serialize, &UStruct_Serialize, O_UStruct_Serialize);
 }

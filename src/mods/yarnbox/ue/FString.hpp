@@ -17,7 +17,7 @@ struct FString
 	FString(FString&&);
 	~FString();
 
-	std::wstring_view to_wstring_view() const;
+	std::wstring_view ToWstringView() const;
 };
 
 }

@@ -17,7 +17,7 @@ ue::FString::~FString()
 }
 
 std::wstring_view
-ue::FString::to_wstring_view() const
+ue::FString::ToWstringView() const
 {
-	return std::wstring_view{ dataPtr, size_t(length) };
+	return std::wstring_view{ dataPtr, size_t(length - 1) };
 }

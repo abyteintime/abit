@@ -2,13 +2,23 @@
 
 #include "abit/procs/UObject.hpp"
 
+using namespace ue;
+
 void
-ue::UObject::GetName(FString* outString)
+UObject::GetName(FString& outString) const
 {
-	abit::procs::UObject::GetName_140094c10.Call<abit::ThisCall, void>(this, outString);
+	abit::procs::UObject::GetName_140094c10.Call<abit::ThisCall, void>(this, &outString);
+}
+
+FString
+UObject::GetName() const
+{
+	FString name;
+	GetName(name);
+	return name;
 }
 
 void
-ue::UObject::__thereIsAVTableInMyHouse__()
+UObject::__thereIsAVTableInMyHouse__()
 {
 }

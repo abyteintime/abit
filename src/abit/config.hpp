@@ -22,8 +22,8 @@ struct Config
 
 	struct Log
 	{
-		std::string fileLevel;
-		std::string consoleLevel;
+		std::string fileLevel = "debug";
+		std::string consoleLevel = "info";
 	} log;
 
 	struct Debug

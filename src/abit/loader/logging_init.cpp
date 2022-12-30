@@ -84,7 +84,7 @@ abit::InitializeLogging() noexcept
 	consoleSink->set_formatter(std::move(consoleFormatter));
 
 	fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-		"ByteinTime/Logs/Log.txt", 1024 * 1024 * 64, 10, true
+		"ByteinTime/Logs/Log.txt", 1024 * 1024 * 1024, 10, true
 	);
 
 	spdlog::set_level(spdlog::level::debug);
