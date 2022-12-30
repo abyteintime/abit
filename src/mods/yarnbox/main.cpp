@@ -9,6 +9,7 @@
 #include "abit/loader/patches.hpp"
 
 #include "abit/procs/FArchive.hpp"
+#include "abit/procs/FEngineLoop.hpp"
 #include "abit/procs/UObject.hpp"
 #include "abit/procs/UStruct.hpp"
 
@@ -64,8 +65,22 @@ UStruct_Serialize(ue::UStruct* self, ue::FArchive* ar)
 	}
 }
 
+static void (*O_FEngineLoop_Init)(class FEngineLoop*);
+static void
+FEngineLoop_Init(class FEngineLoop* self)
+{
+	O_FEngineLoop_Init(self);
+	spdlog::info(
+		"Disassembly stats: attempted {}, successful {}. Success rate is {:.2}%",
+		attemptedDisassemblies,
+		functionsSuccessfullyDisassembled,
+		float(functionsSuccessfullyDisassembled) / float(attemptedDisassemblies) * 100.f
+	);
+}
+
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
 	abit::Patch(abit::procs::UStruct::Serialize, &UStruct_Serialize, O_UStruct_Serialize);
+	abit::Patch(abit::procs::FEngineLoop::Init, &FEngineLoop_Init, O_FEngineLoop_Init);
 }
