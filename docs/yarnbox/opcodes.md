@@ -41,6 +41,14 @@ insn <- opcode operands
 ```
 Rules may capture variables which can be referred to in the description, with the syntax `variable@rule`.
 
+# Disclaimer
+
+The following table may be incomplete. Actual bytecode may contain instructions that are not (yet)
+in this table; ie. instructions that are registered dynamically and do not appear in Ghidra.
+
+As mentioned before, the actual names of certain dynamically registered instructions may be my best
+guesses. These names are suffixed with `_?`.
+
 # Instructions
 
 Index | Name | Operands | Description
@@ -57,6 +65,7 @@ Index | Name | Operands | Description
 9 | `Assert` | `cond@insn` | Logs an error message if `cond` is evaluated to zero.
 10 | `Case` | unknown | Probably something to do with `Switch`, but I haven't reversed this yet.
 11 | `Nothing` | - | Literally does nothing.
+12 | - | - | Hole.
 13 | `GotoLabel` | unknown | -
 14 | `EatReturnValue` | unknown | -
 15 | `Let` | unknown | -
@@ -65,8 +74,10 @@ Index | Name | Operands | Description
 18 | `ClassContext` | unknown | -
 19 | `MetaCast` | unknown | -
 20 | `LetBool` | unknown | -
+21 | - | - | Hole.
 22 | `EndFunctionParms` | unknown | -
 23 | `Self` | unknown | -
+24 | - | - | Hole.
 25 | `Context` | unknown | -
 26 | `ArrayElement` | unknown | -
 27 | `VirtualFunction` | unknown | -
@@ -83,13 +94,15 @@ Index | Name | Operands | Description
 38 | `IntOne` | unknown | -
 39 | `True` | unknown | -
 40 | `False` | unknown | -
-41 | `NativeParm` | unknown | -
+41 | `NativeParm` | `param@ptr` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
 42 | `NoObject` | unknown | -
+43 | - | - | Hole.
 44 | `IntConstByte` | unknown | -
 45 | `BoolVariable` | unknown | -
 46 | `DynamicCast` | unknown | -
 47 | `Iterator` | unknown | -
 48 | `IteratorPop` | unknown | -
+49 | - | - | Hole.
 50 | `StructCmpEq` | unknown | -
 51 | `StructCmpNe` | unknown | -
 52 | `UnicodeStringConst` | unknown | -
@@ -116,6 +129,7 @@ Index | Name | Operands | Description
 73 | `DefaultParmValue` | unknown | -
 74 | `EmptyParmValue` | unknown | -
 75 | `InstanceDelegate` | unknown | -
+76 .. 80 | - | - | Hole.
 81 | `InterfaceContext` | unknown | -
 82 | `InterfaceCast` | unknown | -
 83 | `EndOfScript` | unknown | -
@@ -126,6 +140,7 @@ Index | Name | Operands | Description
 88 | `DynArrayIterator` | unknown | -
 89 | `DynArraySort` | unknown | -
 90 | `JumpIfNotEditorOnly` | unknown | -
+91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
 97 | `HighNative1` | `n@byte` | This one executes opcode `256 + n`.
 98 | `HighNative2` | `n@byte` | This one executes opcode `512 + n`.
@@ -230,8 +245,11 @@ Index | Name | Operands | Description
 197 | `IsA` | unknown | -
 198 | `MultiplyEqual_ByteFloat` | unknown | -
 199 | `Round` | unknown | -
+200 | - | - | Hole.
 201 | `Repl` | unknown | -
+202 | - | - | Hole.
 203 | `NotEqual_RotatorRotator` | unknown | -
+204 .. 209 | - | - | Hole.
 210 | `ComplementEqual_FloatFloat` | unknown | -
 211 | `Subtract_PreVector` | unknown | -
 212 | `Multiply_VectorFloat` | unknown | -
@@ -255,17 +273,20 @@ Index | Name | Operands | Description
 230 | `GetUnAxes` | unknown | -
 231 | `LogInternal` | unknown | -
 232 | `WarnInternal` | unknown | -
+233 | - | - | Hole.
 234 | `Right` | unknown | -
 235 | `Caps` | unknown | -
 236 | `Chr` | unknown | -
 237 | `Asc` | unknown | -
 238 | `Locs` | unknown | -
+239 .. 241 | - | - | Hole.
 242 | `EqualEqual_BoolBool` | unknown | -
 243 | `NotEqual_BoolBool` | unknown | -
 244 | `FMin` | unknown | -
 245 | `FMax` | unknown | -
 246 | `FClamp` | unknown | -
 247 | `Lerp` | unknown | -
+248 | - | - | Hole.
 249 | `Min` | unknown | -
 250 | `Max` | unknown | -
 251 | `Clamp` | unknown | -
@@ -273,38 +294,54 @@ Index | Name | Operands | Description
 253 | `Percent_IntInt` | unknown | -
 254 | `EqualEqual_NameName` | unknown | -
 255 | `NotEqual_NameName` | unknown | -
+256 .. 257 | - | - | Hole.
 258 | `ClassIsChildOf` | unknown | -
+259 .. 269 | - | - | Hole.
 270 | `Add_QuatQuat` | unknown | -
 271 | `Subtract_QuatQuat` | unknown | -
+272 .. 274 | - | - | Hole.
 275 | `LessLess_VectorRotator` | unknown | -
 276 | `GreaterGreater_VectorRotator` | unknown | -
+277 .. 278 | - | - | Hole.
 279 | `Destroy_?` | unknown | First opcode in `AActor::OutsideWorldBounds`, `AActor::VolumeBasedDestroy`.
+280 | - | - | Hole.
 281 | `IsInState` | unknown | -
+282 .. 283 | - | - | Hole.
 284 | `GetStateName` | unknown | -
+285 .. 286 | - | - | Hole.
 287 | `Multiply_RotatorFloat` | unknown | -
 288 | `Multiply_FloatRotator` | unknown | -
 289 | `Divide_RotatorFloat` | unknown | -
 290 | `MultiplyEqual_RotatorFloat` | unknown | -
 291 | `DivideEqual_RotatorFloat` | unknown | -
+292 .. 295 | - | - | Hole.
 296 | `Multiply_VectorVector` | unknown | -
 297 | `MultiplyEqual_VectorVector` | unknown | -
+298 | - | - | Hole.
 299 | `SetRotation_?` | unknown | First opcode in `AController::SetLocation`, `AController::SetRotation`.
 300 | `MirrorVectorByNormal` | unknown | -
+301 .. 315 | - | - | Hole.
 316 | `Add_RotatorRotator` | unknown | -
 317 | `Subtract_RotatorRotator` | unknown | -
 318 | `AddEqual_RotatorRotator` | unknown | -
 319 | `SubtractEqual_RotatorRotator` | unknown | -
 320 | `RotRand` | unknown | -
+321 | - | - | Hole.
 322 | `ConcatEqual_StrStr` | unknown | -
 323 | `AtEqual_StrStr` | unknown | -
 324 | `SubtractEqual_StrStr` | unknown | -
+325 .. 513 | - | - | Hole.
 514 | `LineOfSightTo_?` | unknown | First opcode in `AController::EnemyJustTeleported`.
+515 .. 535 | - | - | Hole.
 536 | `SaveConfig` | unknown | -
+537 .. 1499 | - | - | Hole.
 1500 | `ProjectOnTo` | unknown | -
 1501 | `IsZero` | unknown | -
+1502 .. 3969 | - | - | Hole.
 3970 | `SetPhysics_?` | unknown | First opcode in `AActor::FellOutOfWorld`.
+3971 .. 4094 | - | - | Hole.
 
-# Yarnbox extensions
+## Yarnbox extensions
 
 Yarnbox reserves the following otherwise free opcodes for implementing its functionality:
 
