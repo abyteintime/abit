@@ -54,7 +54,7 @@ UStruct_Serialize(ue::UStruct* self, ue::FArchive* ar)
 		bool success = true;
 		while (!disassembler.AtEnd()) {
 			auto nodeIndex = disassembler.Disassemble();
-			if (tree.nodes[nodeIndex].opcode == yarn::Opcode::Unknown) {
+			if (yarn::Disassembler::StopDisassemblingAfterOpcode(tree.nodes[nodeIndex].opcode)) {
 				success = false;
 				break;
 			}

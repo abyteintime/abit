@@ -259,6 +259,7 @@ namespace yarn {
 	EXPAND(SaveConfig, 536) \
 	EXPAND(ProjectOnTo, 1500) \
 	EXPAND(IsZero, 1501) \
+	EXPAND(OutOfBounds, 4094) \
 	EXPAND(Unknown, 4095)
 
 #define YARN__EXPAND_OPCODE_AS_ENUM(name, index) name = index,

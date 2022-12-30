@@ -10,13 +10,18 @@ The columns are:
 ## Encoding
 
 This document PEG-like language to describe how instructions are encoded formally.
-- `rule <- abc` - define a rule
-- `rule` - match a rule
-- `a b` - match rule `a` then rule `b`
 - `123` - match an exact byte
 - `{}` - match a byte from a given set. Possible elements are:
   - `123` - a single byte
   - `1 .. 10` - a range of bytes
+- `rule <- abc` - define a rule
+- `rule` - match a rule
+- `(rule)` - grouping
+- `a b` - match rule `a` then rule `b`
+- `a?` - match `a` optionally (0 or 1 occurrence)
+- `a*` - match 0 or more occurrences of `a`
+- `a+` - match 1 or more occurrences of `a`
+
 
 Available rules are:
 ```
@@ -50,8 +55,8 @@ guesses. These names are suffixed with `_?`.
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
-0 | `LocalVariable` | `property@ptr` | Loads `property` (UProperty) into GProperty and writes its value to the return value address.
-1 | `InstanceVariable` | `property@ptr` | Loads `property` (UProperty) into GProperty; then reads an instance variable on the object into the return value address.
+0 | `LocalVariable` | `property@ptr` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address.
+1 | `InstanceVariable` | `property@ptr` | Loads `property` (`UProperty*`) into GProperty; then reads an instance variable on the object into the return value address.
 2 | `DefaultVariable` | `property@ptr` | Similar to InstanceVariable but reads from the class default object.
 3 | `StateVariable` | `property@ptr` | -
 4 | `EventStart_?` | unknown | Emitted as the first opcode of events.
@@ -65,37 +70,37 @@ Index | Name | Operands | Description
 12 | - | - | Hole.
 13 | `GotoLabel` | unknown | -
 14 | `EatReturnValue` | unknown | -
-15 | `Let` | unknown | -
+15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears `GRuntimeUCFlags & 2` and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
 16 | `DynArrayElement` | unknown | -
 17 | `New` | unknown | -
 18 | `ClassContext` | unknown | -
 19 | `MetaCast` | unknown | -
-20 | `LetBool` | unknown | -
-21 | - | - | Hole.
+20 | `LetBool` | `lvalue@insn rvalue@insn` | Similar to `Let` but specifically for boolean and boolean array properties. Unlike `Let` it does not seem to have any special support for arrays, as far as I can tell it'll always write to the first element. Just like `BoolVariable` it coerces the written value to either 1 or 0 and ANDs the result with the `bBoolValueEnabled` thingamajig.
+21 | `EndDefaultParm` | N/A | Sentinel value for a `DefaultParmValue` instruction.
 22 | `EndFunctionParms` | unknown | -
-23 | `Self` | unknown | -
+23 | `Self` | - | Sets the return value to `this`.
 24 | - | - | Hole.
 25 | `Context` | unknown | -
 26 | `ArrayElement` | unknown | -
 27 | `VirtualFunction` | unknown | -
 28 | `FinalFunction` | unknown | -
-29 | `IntConst` | unknown | -
-30 | `FloatConst` | unknown | -
-31 | `StringConst` | unknown | -
-32 | `ObjectConst` | unknown | -
-33 | `NameConst` | unknown | -
-34 | `RotationConst` | unknown | -
-35 | `VectorConst` | unknown | -
-36 | `ByteConst` | unknown | -
-37 | `IntZero` | unknown | -
-38 | `IntOne` | unknown | -
-39 | `True` | unknown | -
-40 | `False` | unknown | -
+29 | `IntConst` | `x@u32` | Writes a `uint32_t` to the return value. The endianness is platform-specific.
+30 | `FloatConst` | `x@u32` | Writes a `float` to the return value. The endianness is platform-specific.
+31 | `StringConst` | `string@({1 .. 255}* 0)` | Writes a string constant to the return value (assumed to be an `FString`.)
+32 | `ObjectConst` | `object@ptr` | Writes a `UObject*` to the return value.
+33 | `NameConst` | `name@u64` | Writes a constant `FName` to the return value. Note that `FName` is a trivial 8 byte-long type.
+34 | `RotationConst` | `pitch@u32 yaw@u32 roll@u32` | Writes a constant `FRotator` to the return value.
+35 | `VectorConst` | `x@u32 y@u32 z@u32` | Writes a constant `FVector` to the return value.
+36 | `ByteConst` | `x@byte` | Writes a constant `uint8_t` to the return value.
+37 | `IntZero` | - | Writes the integer 0 to the return address.
+38 | `IntOne` | - | Writes the integer 1 to the return address.
+39 | `True` | - | Alias for `IntOne`.
+40 | `False` | - | Alias for `IntZero`.
 41 | `NativeParm` | `param@ptr` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
 42 | `NoObject` | unknown | -
 43 | - | - | Hole.
 44 | `IntConstByte` | unknown | -
-45 | `BoolVariable` | unknown | -
+45 | `BoolVariable` | `property@u64` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address. Unlike other `*Variable` functions, coerces the property's value to a boolean (either 1 or 0, but not anything else.) ANDs the result with one of the property's fields, but I haven't reverse engineered what it is yet (I assume something like `bBoolValueEnabled`.)
 46 | `DynamicCast` | unknown | -
 47 | `Iterator` | unknown | -
 48 | `IteratorPop` | unknown | -
@@ -123,7 +128,7 @@ Index | Name | Operands | Description
 70 | `DynArrayFind` | unknown | -
 71 | `DynArrayFindStruct` | unknown | -
 72 | `LocalOutVariable` | unknown | -
-73 | `DefaultParmValue` | unknown | -
+73 | `DefaultParmValue` | `jump@u16 default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If `GRuntimeUCFlags & 0x2` is not set, the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
 74 | `EmptyParmValue` | unknown | -
 75 | `InstanceDelegate` | unknown | -
 76 .. 80 | - | - | Hole.
@@ -136,7 +141,7 @@ Index | Name | Operands | Description
 87 | `DynArrayInsertItem` | unknown | -
 88 | `DynArrayIterator` | unknown | -
 89 | `DynArraySort` | unknown | -
-90 | `JumpIfNotEditorOnly` | unknown | -
+90 | `JumpIfNotEditorOnly` | `u16` | Does nothing, since this is a game build.
 91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
 97 | `HighNative1` | `n@byte` | This one executes opcode `256 + n`.
@@ -171,10 +176,10 @@ Index | Name | Operands | Description
 126 | `InStr` | unknown | -
 127 | `Mid` | unknown | -
 128 | `Left` | unknown | -
-129 | `Not_PreBool` | unknown | -
-130 | `AndAnd_BoolBool` | unknown | -
+129 | `Not_PreBool` | `x@insn DebugInfo?` | Boolean NOT; returns the inverse of `x`.
+130 | `AndAnd_BoolBool` | `x@insn y@insn` | Short-circuiting boolean AND. Will not evaluate `y` if `x` is `False`.
 131 | `XorXor_BoolBool` | unknown | -
-132 | `OrOr_BoolBool` | unknown | -
+132 | `OrOr_BoolBool` | `x@insn y@insn` | Short-circuiting boolean OR. Will not evaluate `y` if `x` is `True`.
 133 | `MultiplyEqual_ByteByte` | unknown | -
 134 | `DivideEqual_ByteByte` | unknown | -
 135 | `AddEqual_ByteByte` | unknown | -
@@ -183,28 +188,28 @@ Index | Name | Operands | Description
 138 | `SubtractSubtract_PreByte` | unknown | -
 139 | `AddAdd_Byte` | unknown | -
 140 | `SubtractSubtract_Byte` | unknown | -
-141 | `Complement_PreInt` | unknown | -
+141 | `Complement_PreInt` | `x@insn DebugInfo?` | Bitwise NOTs the 32-bit integer `x`.
 142 | `EqualEqual_RotatorRotator` | unknown | -
 143 | `Subtract_PreInt` | unknown | -
-144 | `Multiply_IntInt` | unknown | -
-145 | `Divide_IntInt` | unknown | -
-146 | `Add_IntInt` | unknown | -
-147 | `Subtract_IntInt` | unknown | -
-148 | `LessLess_IntInt` | unknown | -
-149 | `GreaterGreater_IntInt` | unknown | -
-150 | `Less_IntInt` | unknown | -
-151 | `Greater_IntInt` | unknown | -
-152 | `LessEqual_IntInt` | unknown | -
-153 | `GreaterEqual_IntInt` | unknown | -
-154 | `EqualEqual_IntInt` | unknown | -
-155 | `NotEqual_IntInt` | unknown | -
-156 | `And_IntInt` | unknown | -
-157 | `Xor_IntInt` | unknown | -
-158 | `Or_IntInt` | unknown | -
+144 | `Multiply_IntInt` | `y@insn x@insn DebugInfo?` | Multiplies two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
+145 | `Divide_IntInt` | `x@insn y@insn DebugInfo?` | Divides 32-bit integers `x` by `y`. If `y` is zero, logs an error and the result is zero.
+146 | `Add_IntInt` | `y@insn x@insn DebugInfo?` | Adds two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x + y`.
+147 | `Subtract_IntInt` | `x@insn y@insn DebugInfo?` | Subtracts the 32-bit integer `y` from `x`.
+148 | `LessLess_IntInt` | `x@insn y@insn DebugInfo?` | Left-shifts the 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 << 32` is the same as `1 << 1`.
+149 | `GreaterGreater_IntInt` | `x@insn y@insn DebugInfo?` | Right-shifts the signed 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >> 32` is the same as `1 >> 1`.
+150 | `Less_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x < y`. The return value is widened to a `uint32_t`.
+151 | `Greater_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x > y`. The return value is widened to a `uint32_t`.
+152 | `LessEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x <= y`. The return value is widened to a `uint32_t`.
+153 | `GreaterEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x >= y`. The return value is widened to a `uint32_t`.
+154 | `EqualEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x == y`. The return value is widened to a `uint32_t`.
+155 | `NotEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x != y`. The return value is widened to a `uint32_t`.
+156 | `And_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise ANDs the two 32-bit integers `x` and `y`.
+157 | `Xor_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise XORs the two 32-bit integers `x` and `y`.
+158 | `Or_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise ORs the two 32-bit integers `x` and `y`.
 159 | `MultiplyEqual_IntFloat` | unknown | -
 160 | `DivideEqual_IntFloat` | unknown | -
-161 | `AddEqual_IntInt` | unknown | -
-162 | `SubtractEqual_IntInt` | unknown | -
+161 | `AddEqual_IntInt` | `lvalue@insn rvalue@insn DebugInfo?` | Increments the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not a storage location, returns `lvalue + rvalue` with no side effects.
+162 | `SubtractEqual_IntInt` | `lvalue@insn rvalue@insn DebugInfo?` | Decrements the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not a storage location, returns `lvalue - rvalue` with no side effects.
 163 | `AddAdd_PreInt` | unknown | -
 164 | `SubtractSubtract_PreInt` | unknown | -
 165 | `AddAdd_Int` | unknown | -
@@ -238,7 +243,7 @@ Index | Name | Operands | Description
 193 | `Sqrt` | unknown | -
 194 | `Square` | unknown | -
 195 | `FRand` | unknown | -
-196 | `GreaterGreaterGreater_IntInt` | unknown | -
+196 | `GreaterGreaterGreater_IntInt` | `x@u32 y@u32 DebugInfo?` | Right-shifts the unsigned 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >>> 32` is the same as `1 >>> 1`.
 197 | `IsA` | unknown | -
 198 | `MultiplyEqual_ByteFloat` | unknown | -
 199 | `Round` | unknown | -
@@ -277,8 +282,8 @@ Index | Name | Operands | Description
 237 | `Asc` | unknown | -
 238 | `Locs` | unknown | -
 239 .. 241 | - | - | Hole.
-242 | `EqualEqual_BoolBool` | unknown | -
-243 | `NotEqual_BoolBool` | unknown | -
+242 | `EqualEqual_BoolBool` | `x@u32 y@u32 DebugInfo?` | Compares two booleans `x == y`. The return value is widened to a `uint32_t`.
+243 | `NotEqual_BoolBool` | `x@u32 y@u32 DebugInfo?` | Compares two booleans `x != y`. The return value is widened to a `uint32_t`.
 244 | `FMin` | unknown | -
 245 | `FMax` | unknown | -
 246 | `FClamp` | unknown | -
@@ -288,7 +293,7 @@ Index | Name | Operands | Description
 250 | `Max` | unknown | -
 251 | `Clamp` | unknown | -
 252 | `VRand` | unknown | -
-253 | `Percent_IntInt` | unknown | -
+253 | `Percent_IntInt` | `x@u32 y@u32` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is zero. The log message calls this operation modulo even though it's not.
 254 | `EqualEqual_NameName` | unknown | -
 255 | `NotEqual_NameName` | unknown | -
 256 .. 257 | - | - | Hole.
@@ -336,7 +341,7 @@ Index | Name | Operands | Description
 1501 | `IsZero` | unknown | -
 1502 .. 3969 | - | - | Hole.
 3970 | `SetPhysics_?` | unknown | First opcode in `AActor::FellOutOfWorld`.
-3971 .. 4094 | - | - | Hole.
+3971 .. 4093 | - | - | Hole.
 
 ## Yarnbox extensions
 
@@ -344,4 +349,5 @@ Yarnbox reserves the following otherwise free opcodes for implementing its funct
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
+4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
 4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded. Not an actual executable opcode, do not use.
