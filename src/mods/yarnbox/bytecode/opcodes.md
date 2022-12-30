@@ -2,7 +2,7 @@
 
 The columns are:
 - **Index** - index in the `GNatives` array.
-- **Name** - name of the `exec` function corresponding to the opcode.
+- **Name** - name of the `exec` function corresponding to the opcode, suffixed with `_?` if the exact name is not (yet) known.
 - **Description** - informal description of the opcode's behavior.
 - **Operands** - how the opcode's operands are encoded in the bytecode.
   Lack of operands is denoted with a dash `-`, and operands that haven't been reversed yet are denoted with the word `unknown`.
@@ -49,6 +49,7 @@ Index | Name | Operands | Description
 1 | `InstanceVariable` | `property@ptr` | Loads `property` (UProperty) into GProperty; then reads an instance variable on the object into the return value address.
 2 | `DefaultVariable` | `property@ptr` | Similar to InstanceVariable but reads from the class default object.
 3 | `StateVariable` | `property@ptr` | -
+4 | `EventStart_?` | unknown | Emitted as the first opcode of events.
 5 | `Switch` | unknown | Switch on a couple values. Not sure how this works quite yet.
 6 | `Jump` | `offset@u16` | Unconditional jump by 16-bit relative `offset` inside the current chunk of bytecode.
 7 | `JumpIfNot` | `u16 insn` | Conditional jump by 16-bit `offset`. Jumps if `insn` returns zero.
@@ -277,6 +278,7 @@ Index | Name | Operands | Description
 271 | `Subtract_QuatQuat` | unknown | -
 275 | `LessLess_VectorRotator` | unknown | -
 276 | `GreaterGreater_VectorRotator` | unknown | -
+279 | `Destroy_?` | unknown | First opcode in `AActor::OutsideWorldBounds`, `AActor::VolumeBasedDestroy`.
 281 | `IsInState` | unknown | -
 284 | `GetStateName` | unknown | -
 287 | `Multiply_RotatorFloat` | unknown | -
@@ -286,6 +288,7 @@ Index | Name | Operands | Description
 291 | `DivideEqual_RotatorFloat` | unknown | -
 296 | `Multiply_VectorVector` | unknown | -
 297 | `MultiplyEqual_VectorVector` | unknown | -
+299 | `SetRotation_?` | unknown | First opcode in `AController::SetLocation`, `AController::SetRotation`.
 300 | `MirrorVectorByNormal` | unknown | -
 316 | `Add_RotatorRotator` | unknown | -
 317 | `Subtract_RotatorRotator` | unknown | -
@@ -295,9 +298,11 @@ Index | Name | Operands | Description
 322 | `ConcatEqual_StrStr` | unknown | -
 323 | `AtEqual_StrStr` | unknown | -
 324 | `SubtractEqual_StrStr` | unknown | -
+514 | `LineOfSightTo_?` | unknown | First opcode in `AController::EnemyJustTeleported`.
 536 | `SaveConfig` | unknown | -
 1500 | `ProjectOnTo` | unknown | -
 1501 | `IsZero` | unknown | -
+3970 | `SetPhysics_?` | unknown | First opcode in `AActor::FellOutOfWorld`.
 
 # Yarnbox extensions
 
