@@ -1,10 +1,12 @@
 #pragma once
 
-#include "yarnbox/ue/UField.hpp"
+#include "yarnbox/ue/UState.hpp"
 
 namespace ue {
 
-class UClass : public UField
-{};
+struct UClass : public UState
+{
+	static UClass* StaticClass();
+};
 
 }

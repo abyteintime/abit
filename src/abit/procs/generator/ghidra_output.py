@@ -1,7 +1,7 @@
 import collections
 import csv
 
-Symbol = collections.namedtuple("Row", "original_name location")
+Symbol = collections.namedtuple("Row", "original_name location kind")
 
 def load_symbols(file):
     namespaces = {}
@@ -9,10 +9,10 @@ def load_symbols(file):
     reader = csv.reader(file, dialect="unix", escapechar="\\")
     next(reader)  # discard header row
     for row in reader:
-        [namespace, name, location, *_] = row
+        [namespace, name, location, kind, *_] = row
         namespace_dict = namespaces.get(namespace, {})
         overload_list = namespace_dict.get(name, [])
-        symbol = Symbol(name, location)
+        symbol = Symbol(name, location, kind)
         overload_list.append(symbol)
         namespace_dict[name] = overload_list
         namespaces[namespace] = namespace_dict
@@ -36,7 +36,16 @@ def filter_symbols(namespace: dict):
         is_generated = '`' in name
         is_exception_handling = name.startswith("Unwind@") or name.startswith("Catch@") or name.startswith("Catch_All@")
         is_mangled = name.startswith("?")
-        return is_template or is_generated or is_exception_handling or is_mangled
+        has_dot = '.' in name
+        is_string_constant = name.startswith("u_") or name.startswith("s_")
+        return (
+            is_template or
+            is_generated or
+            is_exception_handling or
+            is_mangled or
+            has_dot or
+            is_string_constant
+        )
 
     to_remove = [name for name in namespace.keys() if is_unsupported_symbol(name)]
     for name in to_remove:

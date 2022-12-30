@@ -11,3 +11,4 @@ ContinuationIndentWidth: 4
 BreakConstructorInitializers: BeforeComma
 AllowAllArgumentsOnNextLine: true
 AccessModifierOffset: -4
+ConstructorInitializerIndentWidth: 4

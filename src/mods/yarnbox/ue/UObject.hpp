@@ -21,8 +21,10 @@ struct UObject
 	int32_t int_U;
 	UObject* outer;
 	void* ptr6_U;
-	class UClass* objectClass;
+	struct UClass* objectClass;
 	void* ptr7_U;
+
+	static struct UClass* StaticClass();
 
 	void GetName(FString& outString) const;
 	FString GetName() const;

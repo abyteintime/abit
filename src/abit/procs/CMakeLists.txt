@@ -2,10 +2,10 @@ add_custom_command(
 	OUTPUT procs.cpp
 	COMMAND python
 		${CMAKE_CURRENT_SOURCE_DIR}/generator/__main__.py
-		--input ${CMAKE_CURRENT_SOURCE_DIR}/procs.csv
+		--input ${CMAKE_CURRENT_SOURCE_DIR}/symbols.csv
 		--output-source procs.cpp
 		--output-headers include/abit/procs
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/procs.csv ${CMAKE_CURRENT_SOURCE_DIR}/generator
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/symbols.csv ${CMAKE_CURRENT_SOURCE_DIR}/generator
 	VERBATIM
 )
 

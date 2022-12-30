@@ -1,6 +1,13 @@
 set(YARNBOX_SOURCES
 	"ue/FString.cpp"
+	"ue/UClass.cpp"
+	"ue/UFunction.cpp"
 	"ue/UObject.cpp"
+	"ue/UStruct.cpp"
+
+	"bytecode/disassembler.cpp"
+	"bytecode/opcode.cpp"
+	"bytecode/tree.cpp"
 
 	"main.cpp"
 )

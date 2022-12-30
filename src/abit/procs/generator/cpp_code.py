@@ -73,6 +73,8 @@ OPERATORS = {
 
 def function_symbol_to_identifier(name: str, symbol: ghidra_output.Symbol, ambiguous: bool):
     out_name = name
+    if name == "`vftable'":
+        out_name = "_vtable"
     if name.startswith('~'):
         out_name = "_destructor"
     if name.startswith("operator"):
@@ -86,6 +88,14 @@ def function_symbol_to_identifier(name: str, symbol: ghidra_output.Symbol, ambig
 
 Header = collections.namedtuple("Header", "namespace_identifier source_code")
 
+def get_type_name(kind):
+    if kind == "Function":
+        return "abit::Proc"
+    elif kind == "Data Label":
+        return "abit::Global"
+    else:
+        assert False, f"unexpected symbol kind '{kind}'"
+
 def generate_header(namespace_name, namespace):
     builder = io.StringIO()
     builder.writelines([
@@ -96,7 +106,7 @@ def generate_header(namespace_name, namespace):
         "#pragma once\n",
         "\n",
         '#include "abit/dll_macros.hpp"\n',
-        '#include "abit/procs/proc.hpp"\n',
+        '#include "abit/procs/base.hpp"\n',
         "\n",
     ])
 
@@ -111,7 +121,8 @@ def generate_header(namespace_name, namespace):
             assert_valid_identifier(symbol_name, symbol_identifier)
             assert symbol_identifier not in identifiers_in_scope, f"duplicated identifier '{symbol_identifier}' in namespace '{namespace}'"
             identifiers_in_scope.add(symbol_identifier)
-            builder.write(f"ABIT_DLL_IMPORT extern abit::Proc {symbol_identifier};\n")
+            type_name = get_type_name(symbol.kind)
+            builder.write(f"ABIT_DLL_IMPORT extern {type_name} {symbol_identifier};\n")
     builder.write("}\n")
 
     return f"{namespace_identifier}.hpp", Header(namespace_identifier, source_code=builder.getvalue())
@@ -123,7 +134,7 @@ def generate_cpp(namespaces, headers):
         f"// at {datetime.now()}\n",
         "\n",
         '#include "abit/dll_macros.hpp"\n',
-        '#include "abit/procs/proc.hpp"\n',
+        '#include "abit/procs/base.hpp"\n',
         "\n",
     ])
 
@@ -137,7 +148,8 @@ def generate_cpp(namespaces, headers):
                 symbol_identifier = function_symbol_to_identifier(symbol_name, symbol, ambiguous)
                 quoted_symbol = json.dumps(f"{namespace_name}::{symbol.original_name}")
                 location = int(symbol.location, 16) - ghidra_output.BASE_ADDRESS
-                builder.write(f"ABIT_DLL_EXPORT abit::Proc {symbol_identifier}{{ {quoted_symbol}, (void*)0x{location:x} }};\n")
+                type_name = get_type_name(symbol.kind)
+                builder.write(f"ABIT_DLL_EXPORT {type_name} {symbol_identifier}{{ {quoted_symbol}, (void*)0x{location:x} }};\n")
 
         builder.write("}\n\n")
 
