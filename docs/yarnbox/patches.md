@@ -80,7 +80,7 @@ The injection above will replace all occurrences of the function call to
 `Hat_HUDMenu.RenderBorderedText` with our evil `MyMod_Ligma.RenderBorderedText`, which subjects the
 player to infinite ligma jokes:
 ```unrealscript
-class MyMod_Ligma;
+class MyMod_Ligma extends Object;
 
 static function RenderBorderedText(
   HUD H,

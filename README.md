@@ -49,7 +49,7 @@ ABiT is split into a few modules, each one fulfilling a single purpose:
     A Hat in Time, and you'll only need to replace `AByteInTime.Procs.dll` with each update.
     Of course ABI compatibility is another thing, because the DLL does not contain any information
     about function signatures, so if any of them changes, your mod crashes and burns.
-- **The Yarnbox,** which is still to be implemented.
+- **The Yarnbox,** which is still in its infancy.
   The Yarnbox is going to be a native mod which enables UnrealScript bytecode patching
   functionality, very much akin to what's done in [Minecraft modding][mcmods] with [Mixin].
   - When this will come out, I have no idea; it'll probably take me a while until I have a PoC
