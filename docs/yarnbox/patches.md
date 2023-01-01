@@ -11,15 +11,30 @@ while cooking the mod using the official Hat in Time modding tools (via the Comp
 Yarnbox needs to know which functions to apply patches to, and that is done using the
 `Yarnbox.Patches.json` file inside the mod's directory.
 
+The overall file structure is as follows:
+```json
+{
+  "version": 1,
+  "patches": []
+}
+```
+The version number will be incremented if any breaking changes are made. Yarnbox will do its best
+to maintain backwards compatibility of this file but warnings may be emitted during mod loading if
+a mod built for an older version of Yarnbox is loaded into the game. If certain features change in
+a backwards-incompatible way, Yarnbox will not load the mod's patches and will emit an error.
+
+The paragraphs below refer solely to the `patches` array; read the JSON examples as if they describe
+only that array.
+
 ## Replacements
 
 Replacements are the simplest type of patch. They replace a function's bytecode completely
 with the bytecode of a different, but compatible function. Replacements are specified using
-`replacement`-type entries inside `Yarnbox.Patches.json`, and look like so:
+`Replacement`-type entries inside `Yarnbox.Patches.json`, and look like so:
 ```json
 [
   {
-    "type": "replacement",
+    "type": "Replacement",
     "comment": "Let the player move in the Peace and Tranquility menu",
     "class": "MyMod_PnTReplacements",
     "function": "DisablesMovement"
@@ -49,11 +64,11 @@ The signatures of both functions must be the same - their return type and parame
 Injections are a more complex type of patch; instead of replacing a function completely, they
 insert bytecode into it.
 
-Injections use `injection`-type entries, like so:
+Injections use `Injection`-type entries, like so:
 ```json
 [
   {
-    "type": "injection",
+    "type": "Injection",
     "comment": "Makes a ligma joke with your hats",
 
     "class": "Hat_HUDMenu_SwapHat",
@@ -61,13 +76,13 @@ Injections use `injection`-type entries, like so:
 
     "injections": [{
       "target": {
-        "type": "functionCall",
+        "type": "FunctionCall",
         "occurrences": "all",
         "functionClass": "Hat_HUDMenu",
         "function": "RenderBorderedText"
       },
       "operation": {
-        "type": "replace",
+        "type": "Replace",
         "toClass": "MyMod_Ligma",
         "toFunction": "RenderBorderedText"
       },

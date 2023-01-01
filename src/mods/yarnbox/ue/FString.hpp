@@ -12,8 +12,7 @@ struct FString
 	int32_t capacity = 0;
 
 	FString();
-	FString(const FString&) = delete;
-
+	FString(const FString&);
 	FString(FString&&);
 	~FString();
 
