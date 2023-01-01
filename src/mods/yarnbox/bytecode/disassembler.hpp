@@ -69,6 +69,13 @@ private:
 	}
 
 	inline uint64_t NextPtr() { return NextU64(); }
+
+	inline void OptionalDebugInfo()
+	{
+		if (CurrentLowOpcode() == Opcode::DebugInfo) {
+			NextU8();
+		}
+	}
 };
 
 }

@@ -18,8 +18,11 @@ Disassembler::Disassembler(const uint8_t* bytecode, size_t length, BytecodeTree&
 NodeIndex
 Disassembler::Disassemble()
 {
+	size_t ipAtStart = ip;
 	Opcode opcode = NextOpcode();
+	Node node = Node{ ipAtStart, opcode };
 	switch (opcode) {
+		// -
 		case Opcode::Stop:
 		case Opcode::Nothing:
 		case Opcode::Self:
@@ -27,20 +30,26 @@ Disassembler::Disassemble()
 		case Opcode::IntOne:
 		case Opcode::True:
 		case Opcode::False:
+		case Opcode::InterfaceCast:
 		case Opcode::EndOfScript:
-			return outTree->AppendNode(Node{ ip, opcode });
+			return outTree->AppendNode(node);
 
+		// u8
 		case Opcode::ByteConst:
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(NextU8(), 0));
+		case Opcode::PrimitiveCast:
+			return outTree->AppendNode(node.WithU32Pair(NextU8(), 0));
 
+		// u16
 		case Opcode::Jump:
 		case Opcode::JumpIfNotEditorOnly:
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(NextU16(), 0));
+			return outTree->AppendNode(node.WithU32Pair(NextU16(), 0));
 
+		// u32
 		case Opcode::IntConst:
 		case Opcode::FloatConst:
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(NextU32(), 0));
+			return outTree->AppendNode(node.WithU32Pair(NextU32(), 0));
 
+		// u64
 		case Opcode::LocalVariable:
 		case Opcode::InstanceVariable:
 		case Opcode::DefaultVariable:
@@ -48,22 +57,54 @@ Disassembler::Disassemble()
 		case Opcode::NativeParm:
 		case Opcode::ObjectConst:
 		case Opcode::NameConst:
-			return outTree->AppendNode(Node{ ip, opcode }.WithU64(NextU64()));
+			return outTree->AppendNode(node.WithU64(NextU64()));
 
+		// u16 insn
 		case Opcode::JumpIfNot: {
 			uint16_t address = NextU16();
 			NodeIndex condition = Disassemble();
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(address, condition));
+			return outTree->AppendNode(node.WithU32Pair(address, condition));
 		}
 
-		case Opcode::Not_PreBool:
-		case Opcode::Complement_PreInt: {
+		// u64 insn
+		case Opcode::MetaCast:
+		case Opcode::DynamicCast: {
+			DataIndex data = outTree->AppendData(2);
+			outTree->Data(data, 0) = NextU64();
+			outTree->Data(data, 1) = Disassemble();
+			return outTree->AppendNode(node.WithU64(data));
+		}
+
+		// insn
+		case Opcode::DynArrayLength: {
 			NodeIndex value = Disassemble();
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(value, 0));
+			return outTree->AppendNode(node.WithU32Pair(value, 0));
 		}
 
+		// insn insn
 		case Opcode::Let:
-		case Opcode::LetBool:
+		case Opcode::DynArrayElement:
+		case Opcode::LetBool: {
+			NodeIndex lvalue = Disassemble();
+			NodeIndex rvalue = Disassemble();
+			return outTree->AppendNode(node.WithU32Pair(lvalue, rvalue));
+		}
+
+		// insn DebugInfo?
+		case Opcode::Not_PreBool:
+		case Opcode::Complement_PreInt:
+		case Opcode::Subtract_PreInt:
+		case Opcode::AddAdd_PreInt:
+		case Opcode::SubtractSubtract_PreInt:
+		case Opcode::AddAdd_Int:
+		case Opcode::SubtractSubtract_Int:
+		case Opcode::Subtract_PreFloat: {
+			NodeIndex value = Disassemble();
+			OptionalDebugInfo();
+			return outTree->AppendNode(node.WithU32Pair(value, 0));
+		}
+
+		// insn insn DebugInfo?
 		case Opcode::Multiply_IntInt:
 		case Opcode::Divide_IntInt:
 		case Opcode::AndAnd_BoolBool:
@@ -83,12 +124,31 @@ Disassembler::Disassemble()
 		case Opcode::Or_IntInt:
 		case Opcode::AddEqual_IntInt:
 		case Opcode::SubtractEqual_IntInt:
-		case Opcode::Percent_IntInt: {
+		case Opcode::Percent_IntInt:
+		case Opcode::MultiplyMultiply_FloatFloat:
+		case Opcode::Multiply_FloatFloat:
+		case Opcode::Divide_FloatFloat:
+		case Opcode::Percent_FloatFloat:
+		case Opcode::Add_FloatFloat:
+		case Opcode::Subtract_FloatFloat:
+		case Opcode::Less_FloatFloat:
+		case Opcode::Greater_FloatFloat:
+		case Opcode::LessEqual_FloatFloat:
+		case Opcode::GreaterEqual_FloatFloat:
+		case Opcode::EqualEqual_FloatFloat:
+		case Opcode::NotEqual_FloatFloat:
+		case Opcode::MultiplyEqual_FloatFloat:
+		case Opcode::DivideEqual_FloatFloat:
+		case Opcode::AddEqual_FloatFloat:
+		case Opcode::SubtractEqual_FloatFloat:
+		case Opcode::ComplementEqual_FloatFloat: {
 			NodeIndex lvalue = Disassemble();
 			NodeIndex rvalue = Disassemble();
-			return outTree->AppendNode(Node{ ip, opcode }.WithU32Pair(lvalue, rvalue));
+			OptionalDebugInfo();
+			return outTree->AppendNode(node.WithU32Pair(lvalue, rvalue));
 		}
 
+		// {1 .. 255}* 0
 		case Opcode::StringConst: {
 			size_t start = ip;
 			while (CurrentByte() != '\x00') {
@@ -99,9 +159,10 @@ Disassembler::Disassemble()
 			const char* data = reinterpret_cast<const char*>(&bytecode[start]);
 			std::string ansiString{ std::string_view(data, end - start) };
 			DataIndex stringIndex = outTree->AppendString(std::move(ansiString));
-			return outTree->AppendNode(Node{ ip, opcode }.WithU64(stringIndex));
+			return outTree->AppendNode(node.WithU64(stringIndex));
 		}
 
+		// u32 u32 u32
 		case Opcode::RotationConst:
 		case Opcode::VectorConst: {
 			auto a = static_cast<uint64_t>(NextU32());
@@ -110,22 +171,57 @@ Disassembler::Disassemble()
 			DataIndex data = outTree->AppendData(2);
 			outTree->Data(data, 0) = (a << 32) | b;
 			outTree->Data(data, 1) = c;
-			return outTree->AppendNode(Node{ ip, opcode }.WithU64(data));
+			return outTree->AppendNode(node.WithU64(data));
+		}
+
+		// insn insn insn DebugInfo?
+		case Opcode::DynArrayInsert:
+		case Opcode::DynArrayRemove: {
+			DataIndex data = outTree->AppendData(3);
+			outTree->Data(data, 0) = Disassemble();
+			outTree->Data(data, 1) = Disassemble();
+			outTree->Data(data, 2) = Disassemble();
+			OptionalDebugInfo();
+			return outTree->AppendNode(node.WithU64(data));
+		}
+
+		// insn u16 insn u8 DebugInfo?
+		case Opcode::DynArrayAddItem:
+		case Opcode::DynArrayRemoveItem: {
+			DataIndex data = outTree->AppendData(3);
+			outTree->Data(data, 0) = Disassemble();
+			outTree->Data(data, 1) = NextU16();
+			outTree->Data(data, 2) = Disassemble();
+			NextU8();
+			OptionalDebugInfo();
+			return outTree->AppendNode(node.WithU64(data));
+		}
+
+		// insn u16 insn insn u8 DebugInfo?
+		case Opcode::DynArrayInsertItem: {
+			DataIndex data = outTree->AppendData(4);
+			outTree->Data(data, 0) = Disassemble();
+			outTree->Data(data, 1) = NextU16();
+			outTree->Data(data, 2) = Disassemble();
+			outTree->Data(data, 3) = Disassemble();
+			NextU8();
+			OptionalDebugInfo();
+			return outTree->AppendNode(node.WithU64(data));
 		}
 
 		case Opcode::OutOfBounds:
 			spdlog::warn("Disassembling opcode resulted in an out-of-bounds read");
-			return outTree->AppendNode(Node{ ip, Opcode::OutOfBounds });
+			return outTree->AppendNode(Node{ ipAtStart, Opcode::OutOfBounds });
 
 		default:
 			spdlog::warn(
 				"Disassembling opcode '{}' ({} at IP={}) is not supported. Remaining bytecode will "
-				"be skipped. Patches applied to this chunk may be incomplete",
+				"be skipped. This function will not be patchable",
 				OpcodeToString(opcode),
 				static_cast<uint32_t>(opcode),
-				ip
+				ipAtStart
 			);
-			return outTree->AppendNode(Node{ ip, Opcode::Unknown });
+			return outTree->AppendNode(Node{ ipAtStart, Opcode::Unknown });
 	}
 }
 
