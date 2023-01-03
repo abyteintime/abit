@@ -7,6 +7,10 @@ function bool DisablesCameraMovement()
 	return false;
 }
 
+// DISCLAIMER:
+// GfB folks I'm terribly sorry for copy-pasting your code in here.
+// I just needed a quick proof of concept and this was one of the easiest things to verify working.
+
 simulated function OnOpenHUD(HUD H, optional string command)
 {
 	local Hat_player ply;
