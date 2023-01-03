@@ -3,34 +3,11 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
-#include <string>
-#include <variant>
 #include <vector>
 
+#include "yarnbox/patch.hpp"
+
 namespace yarn {
-
-struct Patch
-{
-	enum class Type
-	{
-		Replacement,
-		Injection,
-	};
-
-	struct Replacement
-	{
-		std::string className;
-		std::string function;
-	};
-
-	struct Injection
-	{
-		// TBD
-	};
-
-	std::string comment;
-	std::variant<Replacement, Injection> data;
-};
 
 struct ModConfig
 {

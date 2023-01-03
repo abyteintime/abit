@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 #include "yarnbox/ue/memory.hpp"
 
@@ -45,11 +46,31 @@ struct ViewIntoTArray
 	const T& operator[](size_t i) const { return dataPtr[i]; }
 	T& operator[](size_t i) { return dataPtr[i]; }
 
+	void Clear() { length = 0; }
+
+	void Append(T&& element)
+	{
+		if (length + 1 > capacity) {
+			capacity *= 2;
+			dataPtr = reinterpret_cast<T*>(appRealloc(dataPtr, capacity));
+		}
+		dataPtr[length] = std::move(element);
+		length += 1;
+	}
+
+	template<typename Range>
+	void ExtendByCopying(const Range& range)
+	{
+		for (T element : range) {
+			Append(std::move(element));
+		}
+	}
+
 	using RangeType = ArrayRange<ViewIntoTArray<T>, T>;
 	inline RangeType Range() const { return { this }; }
 
-	inline typename RangeType::Cursor begin() { return Range().begin(); }
-	inline typename RangeType::Cursor end() { return Range().end(); }
+	inline typename RangeType::Cursor begin() const { return Range().begin(); }
+	inline typename RangeType::Cursor end() const { return Range().end(); }
 
 private:
 	ViewIntoTArray() {}
@@ -82,8 +103,8 @@ struct TArray
 	using RangeType = ArrayRange<TArray<T>, T>;
 	inline RangeType Range() const { return { this }; }
 
-	inline typename RangeType::Cursor begin() { return Range().begin(); }
-	inline typename RangeType::Cursor end() { return Range().end(); }
+	inline typename RangeType::Cursor begin() const { return Range().begin(); }
+	inline typename RangeType::Cursor end() const { return Range().end(); }
 };
 
 }

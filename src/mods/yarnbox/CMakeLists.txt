@@ -12,6 +12,8 @@ set(YARNBOX_SOURCES
 	"bytecode/tree.cpp"
 
 	"config.cpp"
+	"registry.cpp"
+	"patcher.cpp"
 
 	"main.cpp"
 )
