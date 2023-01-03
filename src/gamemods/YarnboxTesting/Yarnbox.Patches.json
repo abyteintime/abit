@@ -1,0 +1,29 @@
+{
+	"version": 1,
+	"patches": [
+		{
+			"type": "Replacement",
+			"comment": "Patch OnOpenHUD with DanceOnly=true",
+			"class": "YbTest_PnTPatch",
+			"function": "OnOpenHUD"
+		},
+		{
+			"type": "Replacement",
+			"comment": "Patch Render with DanceOnly=true",
+			"class": "YbTest_PnTPatch",
+			"function": "Render"
+		},
+		{
+			"type": "Replacement",
+			"comment": "Patch AdvanceMessage with DanceOnly=true",
+			"class": "YbTest_PnTPatch",
+			"function": "AdvanceMessage"
+		},
+		{
+			"type": "Replacement",
+			"comment": "Allow camera movement in Peace and Tranquility",
+			"class": "YbTest_PnTPatch",
+			"function": "DisablesCameraMovement"
+		}
+	]
+}
