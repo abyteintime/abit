@@ -1,14 +1,14 @@
 param (
-	[string] $Mod = "*"
+	[string] $Mod = "*",
+	[string] $GameInstallDirectory = "C:\Program Files (x86)\Steam\steamapps\common\HatinTime"
 )
 
 $repoModDirectory = "src\gamemods"
-$gameInstallDirectory = "C:\Program Files (x86)\Steam\steamapps\common\HatinTime"
-$gameModDirectory = $gameInstallDirectory + "\HatinTimeGame\Mods"
-$editorExe = $gameInstallDirectory + "\Binaries\Win64\HatinTimeEditor.exe"
+$gameModDirectory = $GameInstallDirectory + "\HatinTimeGame\Mods"
+$editorExe = $GameInstallDirectory + "\Binaries\Win64\HatinTimeEditor.exe"
 
-$makeLogFile = $gameInstallDirectory + "\HatinTimeGame\Logs\make.txt"
-$cookLogFile = $gameInstallDirectory + "\HatinTimeGame\Logs\cook.txt"
+$makeLogFile = $GameInstallDirectory + "\HatinTimeGame\Logs\make.txt"
+$cookLogFile = $GameInstallDirectory + "\HatinTimeGame\Logs\cook.txt"
 
 function Get-ErrorLines {
 	param (

@@ -8,5 +8,6 @@ cmake .. `
 	-G Ninja `
 	-DCMAKE_C_COMPILER=clang `
 	-DCMAKE_CXX_COMPILER=clang++ `
-	-DCMAKE_EXPORT_COMPILE_COMMANDS=true
+	-DCMAKE_EXPORT_COMPILE_COMMANDS=true `
+	$args
 Set-Location ..
