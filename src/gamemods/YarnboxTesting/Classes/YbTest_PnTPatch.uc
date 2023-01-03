@@ -2,7 +2,7 @@ class YbTest_PnTPatch extends Hat_HUDMenu_HatKidDance;
 
 const DanceOnlyPrettyPlease = true;
 
-function bool DisablesCameraMovement()
+function bool DisablesCameraMovement(HUD h)
 {
 	return false;
 }
