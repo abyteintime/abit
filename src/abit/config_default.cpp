@@ -8,7 +8,6 @@ const std::string_view Config::defaultConfigIni = R"config(; A Byte in Time conf
 ; If your game is installed in a different directory, change that here.
 ; Note that the working directory must be the game's install directory, while Executable must point
 ; to where the (64-bit) .exe of the game is located.
-; ABiT does not support 32-bit systems.
 Executable=C:\Program Files (x86)\Steam\steamapps\common\HatinTime\Binaries\Win64\HatinTimeGame.exe
 WorkingDirectory=C:\Program Files (x86)\Steam\steamapps\common\HatinTime
 
