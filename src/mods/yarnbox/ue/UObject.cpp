@@ -13,7 +13,7 @@ UObject::StaticClass()
 void
 UObject::GetName(FString& outString) const
 {
-	abit::procs::UObject::GetName_140094c10.Call<void>(this, &outString);
+	abit::procs::UObject::GetName_de4ee4a5.Call<void>(this, &outString);
 }
 
 FString

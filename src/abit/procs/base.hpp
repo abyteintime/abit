@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "abit/dll_macros.hpp"
+
 #include "abit/procs/init.hpp"
 
 namespace abit {

@@ -1,11 +1,16 @@
 add_custom_command(
 	OUTPUT procs.cpp
-	COMMAND python
-		${CMAKE_CURRENT_SOURCE_DIR}/generator/__main__.py
-		--input ${CMAKE_CURRENT_SOURCE_DIR}/symbols.csv
+	COMMAND
+		cargo run
+		--release
+		--manifest-path ${CMAKE_SOURCE_DIR}/abit-procs-generator/Cargo.toml
+		--
+		--pdb ${ABIT_HATINTIME_GAME_PDB}
 		--output-source procs.cpp
 		--output-headers include/abit/procs
-	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/symbols.csv ${CMAKE_CURRENT_SOURCE_DIR}/generator
+	DEPENDS
+		${ABIT_HATINTIME_GAME_PDB}
+		${CMAKE_SOURCE_DIR}/abit-procs-generator
 	VERBATIM
 )
 
