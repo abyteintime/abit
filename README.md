@@ -121,7 +121,7 @@ WorkingDirectory=C:\Program Files (x86)\Steam\steamapps\common\HatinTime
 
 ### Building example mods
 
-ABiT and Yarnbox ships with a few example mods that demonstrate what they can do.
+ABiT and Yarnbox ship with a few example mods that demonstrate what they can do.
 
 #### Native mods
 
