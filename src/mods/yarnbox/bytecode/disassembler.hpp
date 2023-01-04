@@ -1,5 +1,10 @@
 #pragma once
 
+#include <memory>
+#include <optional>
+#include <utility>
+
+#include "yarnbox/bytecode/encoding.hpp"
 #include "yarnbox/bytecode/opcode.hpp"
 #include "yarnbox/bytecode/tree.hpp"
 
@@ -7,12 +12,30 @@ namespace yarn {
 
 struct Disassembler
 {
+	struct Stats
+	{
+		uint32_t occurrencesOfUnknownOpcodes[opcodeCount] = { 0 };
+		size_t outOfBoundsReads = 0;
+
+		struct Summary
+		{
+			std::vector<std::pair<Opcode, uint32_t>> occurrencesOfUnknownOpcodes;
+			size_t totalOccurrencesOfUnknownOpcodes = 0;
+		};
+
+		Summary ComputeSummary();
+	};
+
 	const uint8_t* bytecode;
 	size_t length;
 	BytecodeTree* outTree;
+
 	size_t ip = 0;
+	Stats* outStats = nullptr;
 
 	Disassembler(const uint8_t* bytecode, size_t length, BytecodeTree& outTree);
+
+	void EnableStatCollection(Stats& outStats);
 
 	BytecodeTree::NodeIndex Disassemble();
 	bool AtEnd() const { return ip >= length; }
@@ -76,6 +99,9 @@ private:
 			NextU8();
 		}
 	}
+
+	std::optional<uint64_t>
+	InterpretPrimitive(Opcode contextOpcode, size_t contextIp, primitive::Type primitive);
 };
 
 }

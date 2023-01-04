@@ -29,6 +29,8 @@
 #include "yarnbox/ue/UObject/fmt.hpp"
 #include "yarnbox/ue/UStruct.hpp"
 
+#include "abit/procs/global.hpp"
+
 using namespace yarn;
 using namespace ue;
 
@@ -36,6 +38,7 @@ static Registry registry;
 
 static size_t attemptedDisassemblies = 0;
 static size_t functionsSuccessfullyDisassembled = 0;
+static Disassembler::Stats disassemblerStats;
 
 static void (*O_UFunction_Serialize)(UFunction*, FArchive*);
 static void
@@ -51,6 +54,7 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 
 	BytecodeTree tree;
 	Disassembler disassembler{ self->bytecode.dataPtr, size_t(self->bytecode.length), tree };
+	disassembler.EnableStatCollection(disassemblerStats);
 	bool success = true;
 	while (!disassembler.AtEnd()) {
 		auto nodeIndex = disassembler.Disassemble();
@@ -69,6 +73,35 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 }
 
 static void
+PrintDisassemblyStats()
+{
+	spdlog::info(
+		"Disassembly stats: attempted {}, successful {}. Success rate is {:.2}%",
+		attemptedDisassemblies,
+		functionsSuccessfullyDisassembled,
+		float(functionsSuccessfullyDisassembled) / float(attemptedDisassemblies) * 100.f
+	);
+
+	Disassembler::Stats::Summary summary = disassemblerStats.ComputeSummary();
+
+	spdlog::debug("===== Failure summary =====");
+	spdlog::debug("Out of bounds reads: {}", disassemblerStats.outOfBoundsReads);
+	spdlog::debug(
+		"Total occurrences of unknown opcodes: {}", summary.totalOccurrencesOfUnknownOpcodes
+	);
+	spdlog::debug("  Counts per opcode");
+	for (auto [opcode, count] : summary.occurrencesOfUnknownOpcodes) {
+		spdlog::debug(
+			"  {:4} | {:30}  {:6} times ({:5.1f}%)",
+			static_cast<uint32_t>(opcode),
+			OpcodeToString(opcode),
+			count,
+			float(count) / float(summary.totalOccurrencesOfUnknownOpcodes) * 100.f
+		);
+	}
+}
+
+static void
 ApplyPatches(const std::vector<Patch>& patches)
 {
 	for (const Patch& patch : patches) {
@@ -79,12 +112,7 @@ ApplyPatches(const std::vector<Patch>& patches)
 static void
 PostInit()
 {
-	spdlog::info(
-		"Disassembly stats: attempted {}, successful {}. Success rate is {:.2}%",
-		attemptedDisassemblies,
-		functionsSuccessfullyDisassembled,
-		float(functionsSuccessfullyDisassembled) / float(attemptedDisassemblies) * 100.f
-	);
+	PrintDisassemblyStats();
 
 	spdlog::info("Yarnbox PostInit: we'll now try to load and apply patch lists from mods.");
 	TArray<FString> localModPackages;

@@ -8,6 +8,7 @@ set(YARNBOX_SOURCES
 	"ue/memory.cpp"
 
 	"bytecode/disassembler.cpp"
+	"bytecode/encoding.cpp"
 	"bytecode/opcode.cpp"
 	"bytecode/tree.cpp"
 

@@ -80,10 +80,10 @@ Index | Name | Operands | Description
 22 | `EndFunctionParms` | unknown | -
 23 | `Self` | - | Sets the return value to `this`.
 24 | - | - | Hole.
-25 | `Context` | unknown | -
+25 | `Context` | `this@insn then@insn` | Executes the instruction `then` on the object `this`.
 26 | `ArrayElement` | unknown | -
-27 | `VirtualFunction` | unknown | -
-28 | `FinalFunction` | unknown | -
+27 | `VirtualFunction` | `name@u64` | Calls a function by its `name` (`FName`), indirectly.
+28 | `FinalFunction` | `function@u64` | Calls a `function` (`UFunction*`) directly.
 29 | `IntConst` | `x@u32` | Writes a `uint32_t` to the return value. The endianness is platform-specific.
 30 | `FloatConst` | `x@u32` | Writes a `float` to the return value. The endianness is platform-specific.
 31 | `StringConst` | `string@({1 .. 255}* 0)` | Writes a string constant to the return value (assumed to be an `FString`.)
@@ -97,7 +97,7 @@ Index | Name | Operands | Description
 39 | `True` | - | Alias for `IntOne`.
 40 | `False` | - | Alias for `IntZero`.
 41 | `NativeParm` | `param@ptr` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
-42 | `NoObject` | unknown | -
+42 | `NoObject` | - | Returns `None`.
 43 | - | - | Hole.
 44 | `IntConstByte` | unknown | -
 45 | `BoolVariable` | `property@u64` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address. Unlike other `*Variable` functions, coerces the property's value to a boolean (either 1 or 0, but not anything else.) ANDs the result with one of the property's fields, but I haven't reverse engineered what it is yet (I assume something like `bBoolValueEnabled`.)
