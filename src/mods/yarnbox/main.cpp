@@ -62,7 +62,7 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 	while (!disassembler.AtEnd()) {
 		BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
 		DumpNode(tree, nodeIndex, stringDump);
-		if (Disassembler::StopDisassemblingAfterOpcode(tree.nodes[nodeIndex].opcode)) {
+		if (disassembler.ShouldStopDisassembling()) {
 			success = false;
 			break;
 		}

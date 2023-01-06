@@ -102,7 +102,7 @@ Disassembler::Disassemble()
 
 	if (rule.IsUnsupported()) {
 		spdlog::warn(
-			"Disassembling opcode '{}' ({} at IP={}) is not supported. Remaining bytecode will "
+			"Disassembling opcode '{}' ({} at IP={:04x}) is not supported. Remaining bytecode will "
 			"be skipped. This function will not be patchable",
 			OpcodeToString(opcode),
 			static_cast<uint32_t>(opcode),
@@ -112,7 +112,7 @@ Disassembler::Disassemble()
 		if (outStats != nullptr) {
 			outStats->occurrencesOfUnknownOpcodes[static_cast<size_t>(opcode)] += 1;
 		}
-		return outTree->AppendNode(Node{ ipAtStart, Opcode::Unknown });
+		return outTree->AppendNode(node);
 	}
 
 	if (rule.useData) {

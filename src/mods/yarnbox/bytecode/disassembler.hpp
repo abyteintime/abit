@@ -40,10 +40,7 @@ struct Disassembler
 	BytecodeTree::NodeIndex Disassemble();
 	bool AtEnd() const { return ip >= length; }
 
-	static bool StopDisassemblingAfterOpcode(Opcode opcode)
-	{
-		return opcode == Opcode::OutOfBounds || opcode == Opcode::Unknown;
-	}
+	bool ShouldStopDisassembling() { return outTree->IsBytecodeBogusAt(ip); }
 
 private:
 	inline uint8_t CurrentByte() const { return AtEnd() ? 0 : bytecode[ip]; }
