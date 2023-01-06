@@ -130,6 +130,7 @@ LoaderInit()
 		}
 	}
 
+	spdlog::set_level(spdlog::level::from_str(config.log.level));
 	GetFileSink()->set_level(spdlog::level::from_str(config.log.fileLevel));
 	GetConsoleSink()->set_level(spdlog::level::from_str(config.log.consoleLevel));
 

@@ -71,6 +71,8 @@ Config::IniKeyHandler(void* user, const char* psection, const char* pkey, const 
 		config->game.workingDirectory = value;
 	} else if (match("Mods", "+Disable")) {
 		config->mods.disable.insert(std::string{ value });
+	} else if (match("Log", "Level")) {
+		config->log.level = value;
 	} else if (match("Log", "FileLevel")) {
 		config->log.fileLevel = value;
 	} else if (match("Log", "ConsoleLevel")) {

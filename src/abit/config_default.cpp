@@ -21,7 +21,8 @@ WorkingDirectory=C:\Program Files (x86)\Steam\steamapps\common\HatinTime
 ; The logger outputs to two locations: a console window, which is opened in the game's process,
 ; and a log file, located in the WorkingDirectory, named ByteinTime.log.
 
-; Set the maximum level of log messages output to ByteinTime.log inside the WorkingDirectory.
+; The log messages that are output to a destination are filtered through a level, which specifies
+; how verbose the messages should be.
 ; Available log levels are (from most verbose to least verbose):
 ;     trace
 ;     debug
@@ -30,6 +31,14 @@ WorkingDirectory=C:\Program Files (x86)\Steam\steamapps\common\HatinTime
 ;     err
 ;     critical
 ;     off
+;
+; Only messages whose verbosity level is less than or equal to the chosen level will be output.
+
+; Set the maximum level of log messages that should be generated at all.
+; This can save some performance in case you're not debugging native mods.
+Level=debug
+
+; Set the maximum level of log messages output to ByteinTime.log inside the WorkingDirectory.
 FileLevel=debug
 ; Set the maximum level of log messages output to the console window.
 ; See above for available log levels.
