@@ -3,6 +3,8 @@
 The columns are:
 - **Index** - index in the `GNatives` array.
 - **Name** - name of the `exec` function corresponding to the opcode, suffixed with `_?` if the exact name is not (yet) known.
+  - The name can be namespaced, like `Actor.MoveTo`, if the `exec` function lives inside a class
+    that's not `UObject` (such as `AActor`.)
 - **Description** - informal description of the opcode's behavior.
 - **Operands** - how the opcode's operands are encoded in the bytecode.
   Lack of operands is denoted with a dash `-`, and operands that haven't been reversed yet are denoted with the word `unknown`.
@@ -21,7 +23,9 @@ This document PEG-like language to describe how instructions are encoded formall
 - `a?` - match `a` optionally (0 or 1 occurrence)
 - `a*` - match 0 or more occurrences of `a`
 - `a+` - match 1 or more occurrences of `a`
-
+- `?a` - match `a`, but don't actually consume anything
+- `!a` - match anything but `a`, but don't actually consume anything
+- `opcode.X` - match the opcode `X`
 
 Available rules are:
 ```
@@ -32,7 +36,9 @@ u16 <- byte byte
 u32 <- byte byte byte byte
 u64 <- byte byte byte byte byte byte byte byte
 
+// These rule serve maily for metadata reasons.
 ptr <- u64
+obj <- ptr
 
 lowOpcode <- {0 .. 95, 112 .. 255}
 highNative <- {96 .. 111}
@@ -40,6 +46,8 @@ opcode <- lowOpcode | highNative byte
 
 // `operands` is specified by the Operands column in the table below.
 insn <- opcode operands
+
+fnargs <- insn* opcode.EndFunctionParms DebugInfo?
 ```
 Rules may capture variables which can be referred to in the description, with the syntax `variable@rule`.
 
@@ -55,11 +63,11 @@ guesses. These names are suffixed with `_?`.
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
-0 | `LocalVariable` | `property@ptr` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address.
-1 | `InstanceVariable` | `property@ptr` | Loads `property` (`UProperty*`) into GProperty; then reads an instance variable on the object into the return value address.
-2 | `DefaultVariable` | `property@ptr` | Similar to InstanceVariable but reads from the class default object.
-3 | `StateVariable` | `property@ptr` | -
-4 | `EventStart_?` | unknown | Emitted as the first opcode of events.
+0 | `LocalVariable` | `property@obj` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address.
+1 | `InstanceVariable` | `property@obj` | Loads `property` (`UProperty*`) into GProperty; then reads an instance variable on the object into the return value address.
+2 | `DefaultVariable` | `property@obj` | Similar to InstanceVariable but reads from the class default object.
+3 | `StateVariable` | `property@obj` | -
+4 | `Return_?` | `value@insn` | So common that it's probably the return opcode. Looking at some functions' source code it would seem like the return opcode indeed; however I haven't found its handling code yet. Since it terminates the execution of a function it cannot be an `exec`.
 5 | `Switch` | unknown | Switch on a couple values. Not sure how this works quite yet.
 6 | `Jump` | `offset@u16` | Unconditional jump by 16-bit relative `offset` inside the current chunk of bytecode.
 7 | `JumpIfNot` | `offset@u16 cond@insn` | Conditional jump by 16-bit `offset`. Jumps if `cond` returns zero.
@@ -67,27 +75,27 @@ Index | Name | Operands | Description
 9 | `Assert` | `cond@insn` | Logs an error message if `cond` is evaluated to zero.
 10 | `Case` | unknown | Probably something to do with `Switch`, but I haven't reversed this yet.
 11 | `Nothing` | - | Literally does nothing.
-12 | - | - | Hole.
-13 | `GotoLabel` | unknown | -
+12 | unknown | unknown | -
+13 | `GotoLabel` | `insn` | -
 14 | `EatReturnValue` | unknown | -
-15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears `GRuntimeUCFlags & 2` and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
+15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears the Value Omitted flag and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
 16 | `DynArrayElement` | `index@insn array@insn` | Not sure about the order of arguments. Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
 17 | `New` | unknown | -
 18 | `ClassContext` | unknown | -
 19 | `MetaCast` | `targetclass@u64 fromclass@insn` | Performs a check that the class `fromclass` is or extends `targetclass`. If so, the class is the value returned. Otherwise returns `None`.
 20 | `LetBool` | `lvalue@insn rvalue@insn` | Similar to `Let` but specifically for boolean and boolean array properties. Unlike `Let` it does not seem to have any special support for arrays, as far as I can tell it'll always write to the first element. Just like `BoolVariable` it coerces the written value to either 1 or 0 and ANDs the result with the `bBoolValueEnabled` thingamajig.
-21 | `EndDefaultParm` | N/A | Sentinel value for a `DefaultParmValue` instruction.
-22 | `EndFunctionParms` | unknown | -
+21 | `EndDefaultParm` | - | Sentinel value for a `DefaultParmValue` instruction.
+22 | `EndFunctionParms` | - | Sentinel value for function arguments. Unlike the name suggests, it is actually for function arguments (values passed to the function by the caller) and not parameters (the variables inside the function that contain these values.) If reached, makes the instruction pointer go back by 1, probably to let an instruction dispatcher in a function call consume this value.
 23 | `Self` | - | Sets the return value to `this`.
-24 | - | - | Hole.
+24 | unknown | unknown | -
 25 | `Context` | `this@insn then@insn` | Executes the instruction `then` on the object `this`.
-26 | `ArrayElement` | unknown | -
-27 | `VirtualFunction` | `name@u64` | Calls a function by its `name` (`FName`), indirectly.
-28 | `FinalFunction` | `function@u64` | Calls a `function` (`UFunction*`) directly.
+26 | `ArrayElement` | `array@insn index@insn` | -
+27 | `VirtualFunction` | `name@u64 fnargs` | Calls a function by its `name` (`FName`), indirectly.
+28 | `FinalFunction` | `function@obj fnargs` | Calls a `function` (`UFunction*`) directly.
 29 | `IntConst` | `x@u32` | Writes a `uint32_t` to the return value. The endianness is platform-specific.
 30 | `FloatConst` | `x@u32` | Writes a `float` to the return value. The endianness is platform-specific.
 31 | `StringConst` | `string@({1 .. 255}* 0)` | Writes a string constant to the return value (assumed to be an `FString`.)
-32 | `ObjectConst` | `object@ptr` | Writes a `UObject*` to the return value.
+32 | `ObjectConst` | `object@obj` | Writes a `UObject*` to the return value.
 33 | `NameConst` | `name@u64` | Writes a constant `FName` to the return value. Note that `FName` is a trivial 8 byte-long type.
 34 | `RotationConst` | `pitch@u32 yaw@u32 roll@u32` | Writes a constant `FRotator` to the return value.
 35 | `VectorConst` | `x@u32 y@u32 z@u32` | Writes a constant `FVector` to the return value.
@@ -96,45 +104,45 @@ Index | Name | Operands | Description
 38 | `IntOne` | - | Writes the integer 1 to the return address.
 39 | `True` | - | Alias for `IntOne`.
 40 | `False` | - | Alias for `IntZero`.
-41 | `NativeParm` | `param@ptr` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
+41 | `NativeParm` | `param@obj` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
 42 | `NoObject` | - | Returns `None`.
-43 | - | - | Hole.
+43 | - | - | Invalid opcode.
 44 | `IntConstByte` | unknown | -
-45 | `BoolVariable` | `property@u64` | Loads `property` (`UProperty*`) into GProperty and writes its value to the return value address. Unlike other `*Variable` functions, coerces the property's value to a boolean (either 1 or 0, but not anything else.) ANDs the result with one of the property's fields, but I haven't reverse engineered what it is yet (I assume something like `bBoolValueEnabled`.)
+45 | `BoolVariable` | `lvalue@insn` | -
 46 | `DynamicCast` | `class@u64 object@insn` | Attempts to cast an `object` into the target `class` (which can also be an interface.) If the cast fails - that is, the object is not of the given class or does not implement the given interface, returns null. Otherwise returns the casted object.
 47 | `Iterator` | unknown | -
-48 | `IteratorPop` | unknown | -
-49 | - | - | Hole.
+48 | `IteratorPop` | - | -
+49 | unknown | - | Unknown single-byte opcode.
 50 | `StructCmpEq` | unknown | -
 51 | `StructCmpNe` | unknown | -
 52 | `UnicodeStringConst` | unknown | -
-53 | `StructMember` | unknown | -
+53 | `StructMember` | `struct@obj field@obj u8 u8 insn` | -
 54 | `DynArrayLength` | `array@insn` | Expects that `array` loads an array property into `GProperty`, `GPropObject`, and `GPropAddr`, then reads the length of the array into the return value.
-55 | `GlobalFunction` | unknown | -
-56 | `PrimitiveCast` | `type@u8` | Performs a primitive cast with the given `type`. See [primitive casts](#primitive-casts) for a list of available cast types. The function which performs the cast is obtained from the global array `GCasts`.
+55 | `GlobalFunction` | `name@u64 fnargs` | Calls a global function by name.
+56 | `PrimitiveCast` | `type@u8 value@insn` | Performs a primitive cast of the given `type` on the provided `value`. See [primitive casts](#primitive-casts) for a list of available cast types. The function which performs the cast is obtained from the global array `GCasts`. Note that although I'm listing all casts as having the same `value@insn` operand, it would be possible for them to differ per cast type, as the operand is read by the primitive cast's `exec` function rather than `execPrimitiveCast` itself.
 57 | `DynArrayInsert` | `array@insn index@insn num@insn DebugInfo?` | Inserts `num` zero elements at `index` inside the given `array`.
 58 | `ReturnNothing` | unknown | -
 59 | `EqualEqual_DelegateDelegate` | unknown | -
 60 | `NotEqual_DelegateDelegate` | unknown | -
 61 | `EqualEqual_DelegateFunction` | unknown | -
 62 | `NotEqual_DelegateFunction` | unknown | -
-63 | `EmptyDelegate` | unknown | -
+63 | `EmptyDelegate` | - | -
 64 | `DynArrayRemove` | `array@insn index@insn num@insn DebugInfo?` | Removes `num` elements at `index` from the given `array`.
 65 | `DebugInfo` | unknown | -
 66 | `DelegateFunction` | unknown | -
 67 | `DelegateProperty` | unknown | -
-68 | `LetDelegate` | unknown | -
+68 | `LetDelegate` | `lvalue@insn rvalue@insn` | -
 69 | `Conditional` | unknown | -
 70 | `DynArrayFind` | unknown | -
 71 | `DynArrayFindStruct` | unknown | -
 72 | `LocalOutVariable` | unknown | -
-73 | `DefaultParmValue` | `jump@u16 default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If `GRuntimeUCFlags & 0x2` is not set, the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
-74 | `EmptyParmValue` | unknown | -
+73 | `DefaultParmValue` | `jump@u16 default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If the Value Omitted flag is not set (an argument to the function is provided,) the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
+74 | `EmptyParmValue` | - | Sets the Value Omitted flag, and nulls out `GPropObject`, `GPropAddress`, and `GProperty`.
 75 | `InstanceDelegate` | unknown | -
-76 .. 80 | - | - | Hole.
-81 | `InterfaceContext` | unknown | -
+76 .. 80 | - | Invalid opcodes.
+81 | `InterfaceContext` | `insn` | -
 82 | `InterfaceCast` | - | Casts the context object to an interface using [primitive cast](#primitive-casts) 70 `ObjectToInterface`.
-83 | `EndOfScript` | unknown | -
+83 | `EndOfScript` | - | Sentinel placed at the end of all chunks of bytecode.
 84 | `DynArrayAdd` | `array@insn num@insn DebugInfo?` | Adds `num` zero elements at the end of the `array`.
 85 | `DynArrayAddItem` | `array@insn jumpoffset@u16 item@insn u8 DebugInfo?` | Append an `item` to the end of the `array`. If `array` doesn't produce a property (`GPropAddr` is null,) perform a jump by `jumpoffset` bytes. The sentinel past `item` is unused. This is quite a complex instruction, I'm not sure if I got it totally right.
 86 | `DynArrayRemoveItem` | `array@insn jumpoffset@u16 item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
@@ -296,19 +304,29 @@ Index | Name | Operands | Description
 253 | `Percent_IntInt` | `x@insn y@insn DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is zero. The log message calls this operation modulo even though it's not.
 254 | `EqualEqual_NameName` | unknown | -
 255 | `NotEqual_NameName` | unknown | -
-256 .. 257 | - | - | Hole.
+256 | `Actor.Sleep` | unknown | -
+257 | - | - | Hole.
 258 | `ClassIsChildOf` | unknown | -
-259 .. 269 | - | - | Hole.
+259 .. 260 | - | - | Hole.
+261 | `Actor.FinishAnim` | unknown | -
+262 | `Actor.SetCollision` | unknown | -
+263 .. 265 | - | - | Hole.
+266 | `Actor.Move` | unknown | -
+267 | `Actor.SetLocation` | unknown | -
+268 .. 269 | - | - | Hole.
 270 | `Add_QuatQuat` | unknown | -
 271 | `Subtract_QuatQuat` | unknown | -
-272 .. 274 | - | - | Hole.
+272 | `Actor.SetOwner` | unknown | -
+273 .. 274 | - | - | Hole.
 275 | `LessLess_VectorRotator` | unknown | -
 276 | `GreaterGreater_VectorRotator` | unknown | -
-277 .. 278 | - | - | Hole.
-279 | `Destroy_?` | unknown | First opcode in `AActor::OutsideWorldBounds`, `AActor::VolumeBasedDestroy`.
-280 | - | - | Hole.
+277 | `Actor.Trace` | unknown | -
+278 | - | - | Hole.
+279 | `Actor.Destroy` | unknown | -
+280 | `Actor.SetTimer` | unknown | -
 281 | `IsInState` | unknown | -
-282 .. 283 | - | - | Hole.
+282 | - | - | Hole.
+283 | `Actor.SetCollisionSize` | unknown | -
 284 | `GetStateName` | unknown | -
 285 .. 286 | - | - | Hole.
 287 | `Multiply_RotatorFloat` | unknown | -
@@ -319,29 +337,122 @@ Index | Name | Operands | Description
 292 .. 295 | - | - | Hole.
 296 | `Multiply_VectorVector` | unknown | -
 297 | `MultiplyEqual_VectorVector` | unknown | -
-298 | - | - | Hole.
-299 | `SetRotation_?` | unknown | First opcode in `AController::SetLocation`, `AController::SetRotation`.
+298 | `Actor.SetBase` | unknown | -
+299 | `Actor.SetRotation` | unknown | -
 300 | `MirrorVectorByNormal` | unknown | -
-301 .. 315 | - | - | Hole.
+301 .. 303 | - | - | Hole.
+304 | `Actor.AllActors` | unknown | -
+305 | `Actor.ChildActors` | unknown | -
+306 | `Actor.BasedActors` | unknown | -
+307 | `Actor.TouchingActors` | unknown | -
+308 | - | - | Hole.
+309 | `Actor.TracedActors` | unknown | -
+310 | - | - | Hole.
+311 | `Actor.VisibleActors` | unknown | -
+312 | `Actor.VisibleCollidingActors` | unknown | -
+313 | `Actor.DynamicActors` | unknown | -
+314 .. 315 | - | - | Hole.
 316 | `Add_RotatorRotator` | unknown | -
 317 | `Subtract_RotatorRotator` | unknown | -
 318 | `AddEqual_RotatorRotator` | unknown | -
 319 | `SubtractEqual_RotatorRotator` | unknown | -
 320 | `RotRand` | unknown | -
-321 | - | - | Hole.
+321 | `Actor.CollidingActors` | unknown | -
 322 | `ConcatEqual_StrStr` | unknown | -
 323 | `AtEqual_StrStr` | unknown | -
 324 | `SubtractEqual_StrStr` | unknown | -
-325 .. 513 | - | - | Hole.
-514 | `LineOfSightTo_?` | unknown | First opcode in `AController::EnemyJustTeleported`.
-515 .. 535 | - | - | Hole.
+325 .. 383 | - | - | Hole.
+384 | `Actor.PollSleep` | unknown | -
+385 | `Actor.PollFinishAnim` | unknown | -
+386 .. 499 | - | - | Hole.
+500 | `Controller.MoveTo` | unknown | -
+501 | `Controller.Unknown1_?` | - | There is a function pointer there but the debug symbol does not directly point to a function.
+502 | `Controller.MoveToward` | unknown | -
+503 | `Controller.Unknown2_?` | - | There is a function pointer there but the debug symbol does not directly point to a function.
+504 .. 507 | - | - | Hole.
+508 | `Controller.FinishRotation` | unknown | -
+509 | `Controller.PollFinishRotation` | unknown | -
+510 .. 511 | - | - | Hole.
+512 | `Actor.MakeNoise` | unknown | -
+513 | - | - | Hole.
+514 | `Controller.LineOfSightTo` | unknown | -
+515 .. 516 | - | - | Hole.
+517 | `Controller.FindPathToward` | unknown | -
+518 | `Controller.FindPathTo` | unknown | -
+519 | - | - | Hole.
+520 | `Controller.ActorReachable` | unknown | -
+521 | `Controller.PointReachable` | unknown | -
+522 .. 523 | - | - | Hole.
+524 | `PlayerController.FindStairRotation` | unknown | -
+525 | `Controller.FindRandomDest` | unknown | -
+526 | `Controller.PickWallAdjust` | unknown | -
+527 | `Controller.WaitForLanding` | unknown | -
+528 | `Controller.PollWaitForLanding` | unknown | -
+529 .. 530 | - | - | Hole.
+531 | `Controller.PickTarget` | unknown | -
+532 | `Actor.PlayerCanSeeMe` | unknown | -
+533 | `Controller.CanSee` | unknown | -
+534 .. 535 | - | - | Hole.
 536 | `SaveConfig` | unknown | -
-537 .. 1499 | - | - | Hole.
+537 | `Controller.CanSeeByPoints` | unknown | -
+538 .. 545 | - | - | Hole.
+546 | `PlayerController.UpdateURL` | unknown | -
+547 | `Controller.GetURLMap` | unknown | -
+548 | `Controller.FastTrace` | unknown | -
+549 .. 1499 | - | - | Hole.
 1500 | `ProjectOnTo` | unknown | -
 1501 | `IsZero` | unknown | -
-1502 .. 3969 | - | - | Hole.
-3970 | `SetPhysics_?` | unknown | First opcode in `AActor::FellOutOfWorld`.
-3971 .. 4093 | - | - | Hole.
+1502 .. 3968 | - | - | Hole.
+3969 | `Actor.MoveSmooth` | unknown | -
+3970 | `Actor.SetPhysics` | unknown | -
+3971 | `Actor.AutonomousPhysics` | unknown | -
+3972 .. 4093 | - | - | Hole.
+
+## Notes
+
+- Instructions with the description "invalid opcode" will cause deserialization to fail with the
+  error message `Bad expr token %02x`, with the opcode as its format argument.
+- Certain opcodes have the name "unknown," which means that the opcode is valid but its name
+  or functionality hasn't been uncovered yet.
+  - Certain unknown opcodes are "unknown single-byte opcodes," which mean that they take no
+    operands but their name or functionality hasn't been uncovered yet.
+
+### Function parameters
+
+The evaluation of function parameters is a little complicated, because function parameters in
+UnrealScript can be optional. Those are declared like so:
+```unrealscript
+function OptionalParmsExample(optional int x = 1, optional int y = x + 2)
+{}
+```
+Note that the default value for a parameter can be _any expression_. I haven't verified if it lets
+you refer to other parameters, but my suspicion given what I've reversed so far is that it _should_
+be possible.
+
+Then in function calls you can omit arguments, like so:
+```unrealscript
+function OptionalArgsExample()
+{
+    OptionalParmsExample(,);
+}
+```
+The syntax is quite ugly and in my opinion totally unreadable, but it does the job.
+
+Now onto the bytecode! The base parsing rule for function arguments is `fnargs`, which is shared
+between all types of functions. As a refresher, here it is in all its glory:
+```
+endfnargs <- 22  // This is the EndFunctionParms opcode. Which is a misnomer, by the way.
+fnargs <- (!endfnargs insn)* endfnargs DebugInfo?
+```
+Function call instructions are structured like `opcode fnexpr fnargs`. `fnexpr` is specific to
+each function call; see the **Operands** column of each `*Function` instruction for reference.
+
+Each function argument can be any expression, but one instruction is used specifically for omitted
+arguments - `EmptyParmValue`. This instruction nulls out the current property and sets the Value
+Omitted flag to signal that no value was given for the parameter.
+Whenever this flag is set, the corresponding parameter's `DefaultParmValue` instruction executes
+zero or more instructions to initialize the parameter. If this flag is not set however, the entire
+section that initializes the parameter is skipped over.
 
 ## Yarnbox extensions
 
@@ -350,7 +461,17 @@ Yarnbox reserves the following otherwise free opcodes for implementing its funct
 Index | Name | Operands | Description
 :-: | --- | --- | ---
 4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
-4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded. Not an actual executable opcode, do not use.
+4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded.
+
+# Flags
+
+The VM keeps a bunch of flags in its global state, inside the `GRuntimeUCFlags` global variable.
+Here's a list of all known flags. The names are not accurate to how they may appear in the Unreal
+Engine source code because... well, I don't have the source code.
+
+Bit | Name | Description
+:-: | --- | ---
+2 | Value Omitted | Unset for each parameter in a function; may be set by arguments that do not provide a value through the `EmptyParmValue` instruction.
 
 # Primitive casts
 
