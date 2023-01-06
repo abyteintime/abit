@@ -13,6 +13,8 @@ set(YARNBOX_SOURCES
 	"bytecode/opcode.cpp"
 	"bytecode/tree.cpp"
 
+	"vm/tracing.cpp"
+
 	"config.cpp"
 	"registry.cpp"
 	"patcher.cpp"

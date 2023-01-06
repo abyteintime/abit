@@ -3,6 +3,7 @@
 #include "fmt/format.h"
 
 #include "abit/string.hpp"
+#include "abit/templates.hpp"
 
 #include "yarnbox/bytecode/encoding.hpp"
 #include "yarnbox/ue/UObject.hpp"
@@ -39,6 +40,8 @@ DumpPrimRec(
 {
 	using namespace yarn::primitive;
 
+	auto out = std::back_inserter(outString);
+
 	switch (prim.type) {
 		case PUnsupported:
 			AddIndent(level, outString);
@@ -56,14 +59,36 @@ DumpPrimRec(
 		case PU64:
 			AddIndent(level, outString);
 			switch (static_cast<IntKind>(prim.arg)) {
-				case KDefault:
-					fmt::format_to(std::back_inserter(outString), "i {}\n", value);
+				case KUnsigned:
+					fmt::format_to(out, "i {}\n", value);
 					break;
+
+				case KSigned:
+					switch (prim.type) {
+						case PU8:
+							fmt::format_to(out, "i(s8) {}\n", static_cast<int8_t>(value));
+							break;
+						case PU16:
+							fmt::format_to(out, "i(s16) {}\n", static_cast<int16_t>(value));
+							break;
+						case PU32:
+							fmt::format_to(out, "i(s32) {}\n", static_cast<int32_t>(value));
+							break;
+						default:
+							// Everything else works like PS64.
+							fmt::format_to(out, "i(s64) {}\n", static_cast<int64_t>(value));
+							break;
+					}
+					break;
+
+				case KFloat:
+					fmt::format_to(out, "i(f32) {}\n", abit::BitCast<float>(value));
+					break;
+
 				case KPointer:
-					fmt::format_to(
-						std::back_inserter(outString), "i(ptr) {}\n", reinterpret_cast<void*>(value)
-					);
+					fmt::format_to(out, "i(ptr) {}\n", reinterpret_cast<void*>(value));
 					break;
+
 				case KObject: {
 					bool isBytecodeBogus = tree.IsBytecodeBogusAt(ip);
 					// This is a giant hack which exploits the fact that valid pointers on x86
@@ -84,30 +109,23 @@ DumpPrimRec(
 					bool isPointerBogus = (0xFFFFFF00'00000000 & value) != 0x00007F00'00000000;
 					if (!isBytecodeBogus && !isPointerBogus) {
 						const UObject* object = reinterpret_cast<UObject*>(value);
-						fmt::format_to(
-							std::back_inserter(outString), "i(obj) {:ip}\n", UObjectFmt{ object }
-						);
+						fmt::format_to(out, "i(obj) {:ip}\n", UObjectFmt{ object });
 					} else {
 						const void* ptr = reinterpret_cast<void*>(value);
-						fmt::format_to(
-							std::back_inserter(outString), "i(obj) {:16} (bogus pointer)\n", ptr
-						);
+						fmt::format_to(out, "i(obj) {:16} (bogus pointer)\n", ptr);
 					}
 					break;
 				}
+
 				case KOffset:
-					fmt::format_to(
-						std::back_inserter(outString),
-						"i(offset) {:#x}\n",
-						static_cast<int16_t>(value)
-					);
+					fmt::format_to(out, "i(offset) {:#x}\n", static_cast<int16_t>(value));
 					break;
 			}
 			break;
 
 		case PAnsiString:
 			AddIndent(level, outString);
-			fmt::format_to(std::back_inserter(outString), "s \"{}\"\n", tree.strings[value]);
+			fmt::format_to(out, "s \"{}\"\n", tree.strings[value]);
 			break;
 
 		case PInsn:
@@ -118,7 +136,7 @@ DumpPrimRec(
 			uint64_t count = tree.Data(value, 0);
 
 			AddIndent(level, outString);
-			fmt::format_to(std::back_inserter(outString), "@+ ({}) [\n", count);
+			fmt::format_to(out, "@+ ({}) [\n", count);
 			for (size_t i = 0; i < count; ++i) {
 				BytecodeTree::NodeIndex insn = tree.Data(value, 1 + i);
 				DumpNodeRec(tree, insn, level + 1, outString);

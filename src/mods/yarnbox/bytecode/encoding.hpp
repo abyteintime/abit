@@ -28,10 +28,12 @@ enum Type : uint8_t
 /// This is the argument to PU* primitives.
 enum IntKind : uint8_t
 {
-	KDefault = 0,
-	KPointer, // Pointer
-	KObject,  // UObject pointer
-	KOffset,  // IP offset: signed, printed as hex
+	KUnsigned = 0, // Unsigned
+	KSigned,       // Signed
+	KFloat,        // Floating-point
+	KPointer,      // Pointer
+	KObject,       // UObject pointer
+	KOffset,       // IP offset: signed, printed as hex
 };
 
 bool
@@ -72,6 +74,11 @@ struct Primitive
 
 namespace primitive {
 
+constexpr Primitive PS8 = { PU8, KSigned };
+constexpr Primitive PS16 = { PU16, KSigned };
+constexpr Primitive PS32 = { PU32, KSigned };
+constexpr Primitive PS64 = { PU64, KSigned };
+constexpr Primitive PFloat = { PU32, KFloat };
 constexpr Primitive PPtr = { PU64, KPointer };
 constexpr Primitive PObj = { PU64, KObject };
 constexpr Primitive POffset = { PU16, KOffset };

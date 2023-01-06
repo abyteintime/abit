@@ -72,7 +72,7 @@ Index | Name | Operands | Description
 6 | `Jump` | `offset@u16` | Unconditional jump by 16-bit relative `offset` inside the current chunk of bytecode.
 7 | `JumpIfNot` | `offset@u16 cond@insn` | Conditional jump by 16-bit `offset`. Jumps if `cond` returns zero.
 8 | `Stop` | - | Sets the instruction pointer to the null pointer, which causes a crash.
-9 | `Assert` | `cond@insn` | Logs an error message if `cond` is evaluated to zero.
+9 | `Assert` | `line@u16 category@u8 cond@insn` | Logs an error message if `cond` is evaluated to zero. The error message is `Assertion failed, line %i` with the format operand being `line`. `category` can be 0 to change the log category to `0x2f9` instead of `0x301`; I haven't discovered what all these categories are called yet.
 10 | `Case` | unknown | Probably something to do with `Switch`, but I haven't reversed this yet.
 11 | `Nothing` | - | Literally does nothing.
 12 | unknown | unknown | -
@@ -80,7 +80,7 @@ Index | Name | Operands | Description
 14 | `EatReturnValue` | unknown | -
 15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears the Value Omitted flag and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
 16 | `DynArrayElement` | `index@insn array@insn` | Not sure about the order of arguments. Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
-17 | `New` | unknown | -
+17 | `New` | `outer@insn name@insn flags@insn class@insn unknown@insn` | Creates a new object with the given parameters. The types are `Object outer`, `String name`, `Int flags`, `Class class`, `Object unknown`. I don't know what the last parameter does.
 18 | `ClassContext` | unknown | -
 19 | `MetaCast` | `targetclass@u64 fromclass@insn` | Performs a check that the class `fromclass` is or extends `targetclass`. If so, the class is the value returned. Otherwise returns `None`.
 20 | `LetBool` | `lvalue@insn rvalue@insn` | Similar to `Let` but specifically for boolean and boolean array properties. Unlike `Let` it does not seem to have any special support for arrays, as far as I can tell it'll always write to the first element. Just like `BoolVariable` it coerces the written value to either 1 or 0 and ANDs the result with the `bBoolValueEnabled` thingamajig.
@@ -88,7 +88,7 @@ Index | Name | Operands | Description
 22 | `EndFunctionParms` | - | Sentinel value for function arguments. Unlike the name suggests, it is actually for function arguments (values passed to the function by the caller) and not parameters (the variables inside the function that contain these values.) If reached, makes the instruction pointer go back by 1, probably to let an instruction dispatcher in a function call consume this value.
 23 | `Self` | - | Sets the return value to `this`.
 24 | unknown | unknown | -
-25 | `Context` | `this@insn then@insn` | Executes the instruction `then` on the object `this`.
+25 | `Context` | `this@insn jump@u16 property@obj type@u8 then@insn` | When successful, executes the expression `then` on the object `this`. When `this` is null however, reads `property` and `type` to figure out the return value's size and zero it out; `type` is used if `property` is null. Then jumps over `then`.
 26 | `ArrayElement` | `array@insn index@insn` | -
 27 | `VirtualFunction` | `name@u64 fnargs` | Calls a function by its `name` (`FName`), indirectly.
 28 | `FinalFunction` | `function@obj fnargs` | Calls a `function` (`UFunction*`) directly.
@@ -121,7 +121,7 @@ Index | Name | Operands | Description
 55 | `GlobalFunction` | `name@u64 fnargs` | Calls a global function by name.
 56 | `PrimitiveCast` | `type@u8 value@insn` | Performs a primitive cast of the given `type` on the provided `value`. See [primitive casts](#primitive-casts) for a list of available cast types. The function which performs the cast is obtained from the global array `GCasts`. Note that although I'm listing all casts as having the same `value@insn` operand, it would be possible for them to differ per cast type, as the operand is read by the primitive cast's `exec` function rather than `execPrimitiveCast` itself.
 57 | `DynArrayInsert` | `array@insn index@insn num@insn DebugInfo?` | Inserts `num` zero elements at `index` inside the given `array`.
-58 | `ReturnNothing` | unknown | -
+58 | `ReturnNothing` | `retval@obj` | Emits a warning that a non-void function reached its `EndOfScript` without hitting a `return` instruction. `retval` is a pointer to the `ReturnValue` property for this function, and is used to zero out the return value.
 59 | `EqualEqual_DelegateDelegate` | unknown | -
 60 | `NotEqual_DelegateDelegate` | unknown | -
 61 | `EqualEqual_DelegateFunction` | unknown | -
@@ -132,7 +132,7 @@ Index | Name | Operands | Description
 66 | `DelegateFunction` | unknown | -
 67 | `DelegateProperty` | unknown | -
 68 | `LetDelegate` | `lvalue@insn rvalue@insn` | -
-69 | `Conditional` | unknown | -
+69 | `Conditional` | `cond@insn overt@u16 true@insn overf@u16 false@insn` | Evaluates `cond` to determine which instruction to execute. If `cond` is false, jumps `overt + 4` bytes forward to land directly on the `false` instruction and execute it. If `cond` is true, does not perform the jump, but rather executes `true` directly and takes a jump `overf + 2` bytes forward.
 70 | `DynArrayFind` | unknown | -
 71 | `DynArrayFindStruct` | unknown | -
 72 | `LocalOutVariable` | unknown | -
