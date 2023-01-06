@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 #include "fmt/ranges.h"
 
@@ -21,8 +22,11 @@
 #include "yarnbox/bytecode/dumper.hpp"
 #include "yarnbox/bytecode/opcode.hpp"
 
+#include "yarnbox/vm/tracing.hpp"
+
 #include "yarnbox/ue/AGameMod.hpp"
 #include "yarnbox/ue/FArchive.hpp"
+#include "yarnbox/ue/FFrame.hpp"
 #include "yarnbox/ue/FString.hpp"
 #include "yarnbox/ue/UClass.hpp"
 #include "yarnbox/ue/UFunction.hpp"
@@ -30,6 +34,7 @@
 #include "yarnbox/ue/UObject/fmt.hpp"
 #include "yarnbox/ue/UStruct.hpp"
 
+#include "abit/procs/FName.hpp"
 #include "abit/procs/global.hpp"
 
 using namespace yarn;
@@ -138,14 +143,6 @@ PostInit()
 	}
 }
 
-static void (*O_FEngineLoop_Init)(class FEngineLoop*);
-static void
-FEngineLoop_Init(class FEngineLoop* self)
-{
-	O_FEngineLoop_Init(self);
-	PostInit();
-}
-
 static thread_local size_t callDepth = 0;
 
 static void (*O_UObject_CallFunction)(UObject*, struct FFrame&, void* const, UFunction*);
@@ -157,6 +154,7 @@ UObject_CallFunction(
 	UFunction* function
 )
 {
+	EnableNativeTracingInThisScope enableTracing{ true };
 	callDepth += 1;
 	if (callDepth > 100) {
 		spdlog::warn(
@@ -167,6 +165,16 @@ UObject_CallFunction(
 	}
 	O_UObject_CallFunction(self, frame, returnPointer, function);
 	callDepth -= 1;
+}
+
+static void (*O_FEngineLoop_Init)(class FEngineLoop*);
+static void
+FEngineLoop_Init(class FEngineLoop* self)
+{
+	SetupNativeTracing();
+	// SetNativeTracingEnabled(true);
+	O_FEngineLoop_Init(self);
+	PostInit();
 }
 
 extern "C" ABIT_DLL_EXPORT void
