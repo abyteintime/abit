@@ -10,6 +10,7 @@ namespace yarn {
 	EXPAND(InstanceVariable, 1) \
 	EXPAND(DefaultVariable, 2) \
 	EXPAND(StateVariable, 3) \
+	EXPAND(Return, 4) \
 	EXPAND(Switch, 5) \
 	EXPAND(Jump, 6) \
 	EXPAND(JumpIfNot, 7) \
@@ -25,6 +26,7 @@ namespace yarn {
 	EXPAND(ClassContext, 18) \
 	EXPAND(MetaCast, 19) \
 	EXPAND(LetBool, 20) \
+	EXPAND(EndDefaultParm, 21) \
 	EXPAND(EndFunctionParms, 22) \
 	EXPAND(Self, 23) \
 	EXPAND(Context, 25) \
@@ -233,12 +235,22 @@ namespace yarn {
 	EXPAND(Percent_IntInt, 253) \
 	EXPAND(EqualEqual_NameName, 254) \
 	EXPAND(NotEqual_NameName, 255) \
+	EXPAND(Actor_Sleep, 256) \
 	EXPAND(ClassIsChildOf, 258) \
+	EXPAND(Actor_FinishAnim, 261) \
+	EXPAND(Actor_SetCollision, 262) \
+	EXPAND(Actor_Move, 266) \
+	EXPAND(Actor_SetLocation, 267) \
 	EXPAND(Add_QuatQuat, 270) \
 	EXPAND(Subtract_QuatQuat, 271) \
+	EXPAND(Actor_SetOwner, 272) \
 	EXPAND(LessLess_VectorRotator, 275) \
 	EXPAND(GreaterGreater_VectorRotator, 276) \
+	EXPAND(Actor_Trace, 277) \
+	EXPAND(Actor_Destroy, 279) \
+	EXPAND(Actor_SetTimer, 280) \
 	EXPAND(IsInState, 281) \
+	EXPAND(Actor_SetCollisionSize, 283) \
 	EXPAND(GetStateName, 284) \
 	EXPAND(Multiply_RotatorFloat, 287) \
 	EXPAND(Multiply_FloatRotator, 288) \
@@ -247,18 +259,58 @@ namespace yarn {
 	EXPAND(DivideEqual_RotatorFloat, 291) \
 	EXPAND(Multiply_VectorVector, 296) \
 	EXPAND(MultiplyEqual_VectorVector, 297) \
+	EXPAND(Actor_SetBase, 298) \
+	EXPAND(Actor_SetRotation, 299) \
 	EXPAND(MirrorVectorByNormal, 300) \
+	EXPAND(Actor_AllActors, 304) \
+	EXPAND(Actor_ChildActors, 305) \
+	EXPAND(Actor_BasedActors, 306) \
+	EXPAND(Actor_TouchingActors, 307) \
+	EXPAND(Actor_TracedActors, 309) \
+	EXPAND(Actor_VisibleActors, 311) \
+	EXPAND(Actor_VisibleCollidingActors, 312) \
+	EXPAND(Actor_DynamicActors, 313) \
 	EXPAND(Add_RotatorRotator, 316) \
 	EXPAND(Subtract_RotatorRotator, 317) \
 	EXPAND(AddEqual_RotatorRotator, 318) \
 	EXPAND(SubtractEqual_RotatorRotator, 319) \
 	EXPAND(RotRand, 320) \
+	EXPAND(Actor_CollidingActors, 321) \
 	EXPAND(ConcatEqual_StrStr, 322) \
 	EXPAND(AtEqual_StrStr, 323) \
 	EXPAND(SubtractEqual_StrStr, 324) \
+	EXPAND(Actor_PollSleep, 384) \
+	EXPAND(Actor_PollFinishAnim, 385) \
+	EXPAND(Controller_MoveTo, 500) \
+	EXPAND(Controller_Unknown1, 501) \
+	EXPAND(Controller_MoveToward, 502) \
+	EXPAND(Controller_Unknown2, 503) \
+	EXPAND(Controller_FinishRotation, 508) \
+	EXPAND(Controller_PollFinishRotation, 509) \
+	EXPAND(Actor_MakeNoise, 512) \
+	EXPAND(Controller_LineOfSightTo, 514) \
+	EXPAND(Controller_FindPathToward, 517) \
+	EXPAND(Controller_FindPathTo, 518) \
+	EXPAND(Controller_ActorReachable, 520) \
+	EXPAND(Controller_PointReachable, 521) \
+	EXPAND(PlayerController_FindStairRotation, 524) \
+	EXPAND(Controller_FindRandomDest, 525) \
+	EXPAND(Controller_PickWallAdjust, 526) \
+	EXPAND(Controller_WaitForLanding, 527) \
+	EXPAND(Controller_PollWaitForLanding, 528) \
+	EXPAND(Controller_PickTarget, 531) \
+	EXPAND(Actor_PlayerCanSeeMe, 532) \
+	EXPAND(Controller_CanSee, 533) \
 	EXPAND(SaveConfig, 536) \
+	EXPAND(Controller_CanSeeByPoints, 537) \
+	EXPAND(PlayerController_UpdateURL, 546) \
+	EXPAND(Controller_GetURLMap, 547) \
+	EXPAND(FastTrace, 548) \
 	EXPAND(ProjectOnTo, 1500) \
 	EXPAND(IsZero, 1501) \
+	EXPAND(Actor_MoveSmooth, 3969) \
+	EXPAND(Actor_SetPhysics, 3970) \
+	EXPAND(Actor_AutonomousPhysics, 3971) \
 	EXPAND(OutOfBounds, 4094) \
 	EXPAND(Unknown, 4095)
 

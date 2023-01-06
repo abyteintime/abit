@@ -2,6 +2,7 @@
 
 #include "yarnbox/bytecode/opcode.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace yarn {
@@ -41,12 +42,18 @@ struct BytecodeTree
 	std::vector<Node> nodes;
 	std::vector<uint64_t> data;
 	std::vector<std::string> strings;
+	std::optional<size_t> firstError = std::nullopt;
 
 	NodeIndex AppendNode(Node node);
 	DataIndex AppendData(size_t count);
+	DataIndex AppendDataFromVector(const std::vector<uint64_t>& source);
 	DataIndex AppendString(std::string&& string);
 
+	void SetFirstErrorIfNull(size_t ip);
+	bool IsBytecodeBogusAt(size_t ip) const;
+
 	inline uint64_t& Data(DataIndex index, size_t offset) { return data.at(index + offset); }
+	inline uint64_t Data(DataIndex index, size_t offset) const { return data.at(index + offset); }
 };
 
 }

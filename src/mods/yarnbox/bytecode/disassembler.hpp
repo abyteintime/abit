@@ -64,30 +64,30 @@ private:
 
 	inline uint16_t NextU16()
 	{
-		auto a = static_cast<uint16_t>(NextU8());
 		auto b = static_cast<uint16_t>(NextU8());
+		auto a = static_cast<uint16_t>(NextU8());
 		return (a << 8) | b;
 	}
 
 	inline uint32_t NextU32()
 	{
-		auto a = static_cast<uint32_t>(NextU8());
-		auto b = static_cast<uint32_t>(NextU8());
-		auto c = static_cast<uint32_t>(NextU8());
 		auto d = static_cast<uint32_t>(NextU8());
+		auto c = static_cast<uint32_t>(NextU8());
+		auto b = static_cast<uint32_t>(NextU8());
+		auto a = static_cast<uint32_t>(NextU8());
 		return (a << 24) | (b << 16) | (c << 8) | d;
 	}
 
 	inline uint64_t NextU64()
 	{
-		auto a = static_cast<uint64_t>(NextU8());
-		auto b = static_cast<uint64_t>(NextU8());
-		auto c = static_cast<uint64_t>(NextU8());
-		auto d = static_cast<uint64_t>(NextU8());
-		auto e = static_cast<uint64_t>(NextU8());
-		auto f = static_cast<uint64_t>(NextU8());
-		auto g = static_cast<uint64_t>(NextU8());
 		auto h = static_cast<uint64_t>(NextU8());
+		auto g = static_cast<uint64_t>(NextU8());
+		auto f = static_cast<uint64_t>(NextU8());
+		auto e = static_cast<uint64_t>(NextU8());
+		auto d = static_cast<uint64_t>(NextU8());
+		auto c = static_cast<uint64_t>(NextU8());
+		auto b = static_cast<uint64_t>(NextU8());
+		auto a = static_cast<uint64_t>(NextU8());
 		return (a << 56) | (b << 48) | (c << 40) | (d << 32) | (e << 24) | (f << 16) | (g << 8) | h;
 	}
 
@@ -101,7 +101,7 @@ private:
 	}
 
 	std::optional<uint64_t>
-	InterpretPrimitive(Opcode contextOpcode, size_t contextIp, primitive::Type primitive);
+	InterpretPrimitive(Opcode contextOpcode, size_t contextIp, Primitive primitive);
 };
 
 }

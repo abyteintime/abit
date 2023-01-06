@@ -57,9 +57,7 @@ struct fmt::formatter<ue::UObjectFmt>
 			}
 			ue::FString className = object->objectClass->GetName();
 			ue::FString name = object->GetName();
-			fmt::format_to(
-				context.out(), L"{}'{}'", className.ToWstringView(), name.ToWstringView()
-			);
+			fmt::format_to(context.out(), "{}'{}'", className.ToString(), name.ToString());
 			if (showPointer) {
 				fmt::format_to(context.out(), " ({})", reinterpret_cast<const void*>(object));
 			}

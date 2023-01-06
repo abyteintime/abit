@@ -18,6 +18,7 @@
 #include "yarnbox/registry.hpp"
 
 #include "yarnbox/bytecode/disassembler.hpp"
+#include "yarnbox/bytecode/dumper.hpp"
 #include "yarnbox/bytecode/opcode.hpp"
 
 #include "yarnbox/ue/AGameMod.hpp"
@@ -46,18 +47,21 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 {
 	O_UFunction_Serialize(self, ar);
 
-	FString name = self->GetName();
+	std::string name = self->GetName().ToString();
+	std::string outerName = self->outer->GetName().ToString();
 
-	spdlog::debug(L"Function: {}", name.ToWstringView());
+	spdlog::debug("Function: {}", name);
 	spdlog::debug("  - outer: {:ip}", UObjectFmt{ self->outer });
-	spdlog::debug("  - bytecode: {}", self->bytecode.Range());
+	spdlog::debug("  - bytecode: ({} bytes) {}", self->bytecode.length, self->bytecode.Range());
 
 	BytecodeTree tree;
 	Disassembler disassembler{ self->bytecode.dataPtr, size_t(self->bytecode.length), tree };
+	std::string stringDump;
 	disassembler.EnableStatCollection(disassemblerStats);
 	bool success = true;
 	while (!disassembler.AtEnd()) {
-		auto nodeIndex = disassembler.Disassemble();
+		BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
+		DumpNode(tree, nodeIndex, stringDump);
 		if (Disassembler::StopDisassemblingAfterOpcode(tree.nodes[nodeIndex].opcode)) {
 			success = false;
 			break;
@@ -66,6 +70,7 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 	attemptedDisassemblies += 1;
 	functionsSuccessfullyDisassembled += success;
 	spdlog::debug("Disassembled bytecode into {} nodes", tree.nodes.size());
+	spdlog::trace("Disassembly:\n{}", stringDump);
 
 	Function function;
 	function.unreal = reinterpret_cast<UFunction*>(self);
