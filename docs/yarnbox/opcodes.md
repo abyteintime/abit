@@ -80,8 +80,8 @@ Index | Name | Operands | Description
 14 | `EatReturnValue` | unknown | -
 15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears the Value Omitted flag and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
 16 | `DynArrayElement` | `index@insn array@insn` | Not sure about the order of arguments. Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
-17 | `New` | `outer@insn name@insn flags@insn class@insn unknown@insn` | Creates a new object with the given parameters. The types are `Object outer`, `String name`, `Int flags`, `Class class`, `Object unknown`. I don't know what the last parameter does.
-18 | `ClassContext` | unknown | -
+17 | `New` | `outer@insn name@insn flags@insn class@insn template@insn` | Creates a new object with the given parameters. The types are `Object outer`, `String name`, `Int flags`, `Class class`, `Object template`.
+18 | `ClassContext` | `this@insn jump@u16 property@obj type@u8 then@insn` | Similar to `Context` (25), but `this` is expected to be a class, and `then` is executed on the class default object instead of `this`.
 19 | `MetaCast` | `targetclass@u64 fromclass@insn` | Performs a check that the class `fromclass` is or extends `targetclass`. If so, the class is the value returned. Otherwise returns `None`.
 20 | `LetBool` | `lvalue@insn rvalue@insn` | Similar to `Let` but specifically for boolean and boolean array properties. Unlike `Let` it does not seem to have any special support for arrays, as far as I can tell it'll always write to the first element. Just like `BoolVariable` it coerces the written value to either 1 or 0 and ANDs the result with the `bBoolValueEnabled` thingamajig.
 21 | `EndDefaultParm` | - | Sentinel value for a `DefaultParmValue` instruction.
@@ -110,7 +110,7 @@ Index | Name | Operands | Description
 44 | `IntConstByte` | unknown | -
 45 | `BoolVariable` | `lvalue@insn` | -
 46 | `DynamicCast` | `class@u64 object@insn` | Attempts to cast an `object` into the target `class` (which can also be an interface.) If the cast fails - that is, the object is not of the given class or does not implement the given interface, returns null. Otherwise returns the casted object.
-47 | `Iterator` | unknown | -
+47 | `Iterator` | - | Does not do anything.
 48 | `IteratorPop` | - | -
 49 | unknown | - | Unknown single-byte opcode.
 50 | `StructCmpEq` | unknown | -
@@ -135,7 +135,7 @@ Index | Name | Operands | Description
 69 | `Conditional` | `cond@insn overt@u16 true@insn overf@u16 false@insn` | Evaluates `cond` to determine which instruction to execute. If `cond` is false, jumps `overt + 4` bytes forward to land directly on the `false` instruction and execute it. If `cond` is true, does not perform the jump, but rather executes `true` directly and takes a jump `overf + 2` bytes forward.
 70 | `DynArrayFind` | unknown | -
 71 | `DynArrayFindStruct` | unknown | -
-72 | `LocalOutVariable` | unknown | -
+72 | `LocalOutVariable` | `property@obj` | Similar to `LocalVariable`, but does some stuff specifically to support passing variables via parameters. Not entirely sure what, though.
 73 | `DefaultParmValue` | `jump@u16 default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If the Value Omitted flag is not set (an argument to the function is provided,) the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
 74 | `EmptyParmValue` | - | Sets the Value Omitted flag, and nulls out `GPropObject`, `GPropAddress`, and `GProperty`.
 75 | `InstanceDelegate` | unknown | -
@@ -167,27 +167,27 @@ Index | Name | Operands | Description
 109 | `HighNative13` | `n@byte` | This one executes opcode `3328 + n`.
 110 | `HighNative14` | `n@byte` | This one executes opcode `3584 + n`.
 111 | `HighNative15` | `n@byte` | This one executes opcode `3840 + n`. Having all the `HighNative` opcodes allows for execution of opcodes up to 4095.
-112 | `Concat_StrStr` | unknown | -
+112 | `Concat_StrStr` | `a@insn b@insn u8 DebugInfo?` | Concatenates two strings together.
 113 | `GotoState` | unknown | -
-114 | `EqualEqual_ObjectObject` | unknown | -
-115 | `Less_StrStr` | unknown | -
-116 | `Greater_StrStr` | unknown | -
+114 | `EqualEqual_ObjectObject` | `a@insn b@insn u8 DebugInfo?` | Compares two objects `a == b`.
+115 | `Less_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a < b` lexicographically.
+116 | `Greater_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a > b` lexicographically.
 117 | `Enable` | unknown | -
 118 | `Disable` | unknown | -
-119 | `NotEqual_ObjectObject` | unknown | -
-120 | `LessEqual_StrStr` | unknown | -
-121 | `GreaterEqual_StrStr` | unknown | -
-122 | `EqualEqual_StrStr` | unknown | -
-123 | `NotEqual_StrStr` | unknown | -
-124 | `ComplementEqual_StrStr` | unknown | -
+119 | `NotEqual_ObjectObject` | `a@insn b@insn u8 DebugInfo?` | Compares two objects `a != b`.
+120 | `LessEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a <= b` lexicographically.
+121 | `GreaterEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a >= b` lexicographically.
+122 | `EqualEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a == b`.
+123 | `NotEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a != b`.
+124 | `ComplementEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a == b`, but case-insensitively (this is the UnrealScript `a ~= b` operator.)
 125 | `Len` | unknown | -
 126 | `InStr` | unknown | -
 127 | `Mid` | unknown | -
 128 | `Left` | unknown | -
-129 | `Not_PreBool` | `x@insn DebugInfo?` | Boolean NOT; returns the inverse of `x`.
-130 | `AndAnd_BoolBool` | `x@insn y@insn` | Short-circuiting boolean AND. Will not evaluate `y` if `x` is `False`.
-131 | `XorXor_BoolBool` | unknown | -
-132 | `OrOr_BoolBool` | `x@insn y@insn` | Short-circuiting boolean OR. Will not evaluate `y` if `x` is `True`.
+129 | `Not_PreBool` | `x@insn u8 DebugInfo?` | Boolean NOT; returns the inverse of `x`.
+130 | `AndAnd_BoolBool` | `x@insn u8 jump@u16 y@insn u8` | Short-circuiting boolean AND. If `x` is `False`, it'll jump the IP `jump` bytes forward, so as short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
+131 | `XorXor_BoolBool` | unknown | Alias for `NotEqual_BoolBool`.
+132 | `OrOr_BoolBool` | `x@insn u8 jump@u16 y@insn u8` | Short-circuiting boolean OR. If `x` is `True`, it'll jump the IP `jump` bytes forward, so as to short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
 133 | `MultiplyEqual_ByteByte` | unknown | -
 134 | `DivideEqual_ByteByte` | unknown | -
 135 | `AddEqual_ByteByte` | unknown | -
@@ -196,51 +196,51 @@ Index | Name | Operands | Description
 138 | `SubtractSubtract_PreByte` | unknown | -
 139 | `AddAdd_Byte` | unknown | -
 140 | `SubtractSubtract_Byte` | unknown | -
-141 | `Complement_PreInt` | `x@insn DebugInfo?` | Bitwise NOTs the 32-bit integer `x`.
+141 | `Complement_PreInt` | `x@insn u8 DebugInfo?` | Bitwise NOTs the 32-bit integer `x`.
 142 | `EqualEqual_RotatorRotator` | unknown | -
-143 | `Subtract_PreInt` | `x@insn DebugInfo?` | Unary minus (negation) operator for 32-bit integers `-x`.
-144 | `Multiply_IntInt` | `y@insn x@insn DebugInfo?` | Multiplies two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
-145 | `Divide_IntInt` | `x@insn y@insn DebugInfo?` | Divides 32-bit integers `x` by `y`. If `y` is zero, logs an error and the result is zero.
-146 | `Add_IntInt` | `y@insn x@insn DebugInfo?` | Adds two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x + y`.
-147 | `Subtract_IntInt` | `x@insn y@insn DebugInfo?` | Subtracts the 32-bit integer `y` from `x`.
-148 | `LessLess_IntInt` | `x@insn y@insn DebugInfo?` | Left-shifts the 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 << 32` is the same as `1 << 1`.
-149 | `GreaterGreater_IntInt` | `x@insn y@insn DebugInfo?` | Right-shifts the signed 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >> 32` is the same as `1 >> 1`.
-150 | `Less_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x < y`. The return value is widened to a `uint32_t`.
-151 | `Greater_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x > y`. The return value is widened to a `uint32_t`.
-152 | `LessEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x <= y`. The return value is widened to a `uint32_t`.
-153 | `GreaterEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x >= y`. The return value is widened to a `uint32_t`.
-154 | `EqualEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x == y`. The return value is widened to a `uint32_t`.
-155 | `NotEqual_IntInt` | `x@insn y@insn DebugInfo?` | Compares two signed 32-bit integers `x != y`. The return value is widened to a `uint32_t`.
-156 | `And_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise ANDs the two 32-bit integers `x` and `y`.
-157 | `Xor_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise XORs the two 32-bit integers `x` and `y`.
-158 | `Or_IntInt` | `x@insn y@insn DebugInfo?` | Bitwise ORs the two 32-bit integers `x` and `y`.
-159 | `MultiplyEqual_IntFloat` | unknown | -
-160 | `DivideEqual_IntFloat` | unknown | -
-161 | `AddEqual_IntInt` | `lvalue@insn rvalue@insn DebugInfo?` | Increments the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue + rvalue` with no side effects.
-162 | `SubtractEqual_IntInt` | `lvalue@insn rvalue@insn DebugInfo?` | Decrements the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue - rvalue` with no side effects.
-163 | `AddAdd_PreInt` | `lvalue@insn DebugInfo?` | Prefix increment operator for ints `++a`. Increments the variable `lvalue` by one. Returns the new value (after incrementing.)
-164 | `SubtractSubtract_PreInt` | `lvalue@insn DebugInfo?` | Prefix decrement operator for ints `--a`. Increments the variable `lvalue` by one. Returns the new value (after decrementing.)
-165 | `AddAdd_Int` | `lvalue@insn DebugInfo?` | Postfix increment operator for ints `a++`. Increments the variable `lvalue` by one. Returns the old value (before incrementing.)
-166 | `SubtractSubtract_Int` | `lvalue@insn DebugInfo?` | Postfix decrement operator for ints `a--`. Increments the variable `lvalue` by one. Returns the old value (before decrementing.)
+143 | `Subtract_PreInt` | `x@insn u8 DebugInfo?` | Unary minus (negation) operator for 32-bit integers `-x`.
+144 | `Multiply_IntInt` | `y@insn x@insn u8 DebugInfo?` | Multiplies two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
+145 | `Divide_IntInt` | `x@insn y@insn u8 DebugInfo?` | Divides 32-bit integers `x` by `y`. If `y` is zero, logs an error and the result is zero.
+146 | `Add_IntInt` | `y@insn x@insn u8 DebugInfo?` | Adds two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x + y`.
+147 | `Subtract_IntInt` | `x@insn y@insn u8 DebugInfo?` | Subtracts the 32-bit integer `y` from `x`.
+148 | `LessLess_IntInt` | `x@insn y@insn u8 DebugInfo?` | Left-shifts the 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 << 32` is the same as `1 << 1`.
+149 | `GreaterGreater_IntInt` | `x@insn y@insn u8 DebugInfo?` | Right-shifts the signed 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >> 32` is the same as `1 >> 1`.
+150 | `Less_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x < y`. The return value is widened to a `uint32_t`.
+151 | `Greater_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x > y`. The return value is widened to a `uint32_t`.
+152 | `LessEqual_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x <= y`. The return value is widened to a `uint32_t`.
+153 | `GreaterEqual_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x >= y`. The return value is widened to a `uint32_t`.
+154 | `EqualEqual_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x == y`. The return value is widened to a `uint32_t`.
+155 | `NotEqual_IntInt` | `x@insn y@insn u8 DebugInfo?` | Compares two signed 32-bit integers `x != y`. The return value is widened to a `uint32_t`.
+156 | `And_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise ANDs the two 32-bit integers `x` and `y`.
+157 | `Xor_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise XORs the two 32-bit integers `x` and `y`.
+158 | `Or_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise ORs the two 32-bit integers `x` and `y`.
+159 | `MultiplyEqual_IntFloat` | `x@insn y@insn u8 DebugInfo?` | -
+160 | `DivideEqual_IntFloat` | `x@insn y@insn u8 DebugInfo?` | -
+161 | `AddEqual_IntInt` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Increments the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue + rvalue` with no side effects.
+162 | `SubtractEqual_IntInt` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Decrements the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue - rvalue` with no side effects.
+163 | `AddAdd_PreInt` | `lvalue@insn u8 DebugInfo?` | Prefix increment operator for ints `++a`. Increments the variable `lvalue` by one. Returns the new value (after incrementing.)
+164 | `SubtractSubtract_PreInt` | `lvalue@insn u8 DebugInfo?` | Prefix decrement operator for ints `--a`. Increments the variable `lvalue` by one. Returns the new value (after decrementing.)
+165 | `AddAdd_Int` | `lvalue@insn u8 DebugInfo?` | Postfix increment operator for ints `a++`. Increments the variable `lvalue` by one. Returns the old value (before incrementing.)
+166 | `SubtractSubtract_Int` | `lvalue@insn u8 DebugInfo?` | Postfix decrement operator for ints `a--`. Increments the variable `lvalue` by one. Returns the old value (before decrementing.)
 167 | `Rand` | unknown | -
-168 | `At_StrStr` | unknown | -
-169 | `Subtract_PreFloat` | `x@insn DebugInfo?` | Unary minus (negation) for floats `-x`.
-170 | `MultiplyMultiply_FloatFloat` | `x@insn n@insn DebugInfo?` | Exponentiation operator `x ** y` (C math function `powf`.) Raises `x` to the `n`-th power.
-171 | `Multiply_FloatFloat` | `y@insn x@insn DebugInfo?` | Multiplies two floats and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
-172 | `Divide_FloatFloat` | `x@insn y@insn DebugInfo?` | Divides float `x` by `y`. If `y` is zero, logs an error and the result is as defined by IEEE 754.
-173 | `Percent_FloatFloat` | `x@u32 y@u32 DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is as defined by IEEE 754. The error message erroneously calls this operation modulo, even though it returns the remainder of division.
-174 | `Add_FloatFloat` | `y@insn x@insn DebugInfo?` | Adds two floats together and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x + y`.
-175 | `Subtract_FloatFloat` | `x@insn y@insn DebugInfo?` | Subtracts the float `y` from `x`.
-176 | `Less_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x < y`. The return value is widened to a `uint32_t`.
-177 | `Greater_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x > y`. The return value is widened to a `uint32_t`.
-178 | `LessEqual_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x <= y`. The return value is widened to a `uint32_t`.
-179 | `GreaterEqual_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x >= y`. The return value is widened to a `uint32_t`.
-180 | `EqualEqual_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x == y`. The return value is widened to a `uint32_t`.
-181 | `NotEqual_FloatFloat` | `x@insn y@insn DebugInfo?` | Compares two floats `x != y`. The return value is widened to a `uint32_t`.
-182 | `MultiplyEqual_FloatFloat` | `lvalue@insn rvalue@insn DebugInfo?` | Multiplies a float in place `lvalue *= rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
-183 | `DivideEqual_FloatFloat` | `lvalue@insn rvalue@insn DebugInfo?` | Divides a float in place `lvalue /= rvalue`. Returns the divided value. If `lvalue` is not an lvalue, returns `lvalue / rvalue` with no side effects. If `rvalue` is zero, logs an error message, and the result is as defined by IEEE 754.
-184 | `AddEqual_FloatFloat` | `lvalue@insn rvalue@insn DebugInfo?` | Adds a float in place `lvalue += rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
-185 | `SubtractEqual_FloatFloat` | `lvalue@insn rvalue@insn DebugInfo?` | Subtracts a float in place `lvalue -= rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
+168 | `At_StrStr` | `a@insn b@insn u8 DebugInfo?` | Joins two strings together with a space inbetween.
+169 | `Subtract_PreFloat` | `x@insn u8 DebugInfo?` | Unary minus (negation) for floats `-x`.
+170 | `MultiplyMultiply_FloatFloat` | `x@insn n@insn u8 DebugInfo?` | Exponentiation operator `x ** y` (C math function `powf`.) Raises `x` to the `n`-th power.
+171 | `Multiply_FloatFloat` | `y@insn x@insn u8 DebugInfo?` | Multiplies two floats and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
+172 | `Divide_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Divides float `x` by `y`. If `y` is zero, logs an error and the result is as defined by IEEE 754.
+173 | `Percent_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is as defined by IEEE 754. The error message erroneously calls this operation modulo, even though it returns the remainder of division.
+174 | `Add_FloatFloat` | `y@insn x@insn u8 DebugInfo?` | Adds two floats together and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x + y`.
+175 | `Subtract_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Subtracts the float `y` from `x`.
+176 | `Less_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x < y`. The return value is widened to a `uint32_t`.
+177 | `Greater_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x > y`. The return value is widened to a `uint32_t`.
+178 | `LessEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x <= y`. The return value is widened to a `uint32_t`.
+179 | `GreaterEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x >= y`. The return value is widened to a `uint32_t`.
+180 | `EqualEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x == y`. The return value is widened to a `uint32_t`.
+181 | `NotEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Compares two floats `x != y`. The return value is widened to a `uint32_t`.
+182 | `MultiplyEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies a float in place `lvalue *= rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
+183 | `DivideEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Divides a float in place `lvalue /= rvalue`. Returns the divided value. If `lvalue` is not an lvalue, returns `lvalue / rvalue` with no side effects. If `rvalue` is zero, logs an error message, and the result is as defined by IEEE 754.
+184 | `AddEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Adds a float in place `lvalue += rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
+185 | `SubtractEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Subtracts a float in place `lvalue -= rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
 186 | `Abs` | unknown | -
 187 | `Sin` | unknown | -
 188 | `Cos` | unknown | -
@@ -251,7 +251,7 @@ Index | Name | Operands | Description
 193 | `Sqrt` | unknown | -
 194 | `Square` | unknown | -
 195 | `FRand` | unknown | -
-196 | `GreaterGreaterGreater_IntInt` | `x@insn y@insn DebugInfo?` | Right-shifts the unsigned 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >>> 32` is the same as `1 >>> 1`.
+196 | `GreaterGreaterGreater_IntInt` | `x@insn y@insn u8 DebugInfo?` | Right-shifts the unsigned 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >>> 32` is the same as `1 >>> 1`.
 197 | `IsA` | unknown | -
 198 | `MultiplyEqual_ByteFloat` | unknown | -
 199 | `Round` | unknown | -
@@ -260,7 +260,7 @@ Index | Name | Operands | Description
 202 | - | - | Hole.
 203 | `NotEqual_RotatorRotator` | unknown | -
 204 .. 209 | - | - | Hole.
-210 | `ComplementEqual_FloatFloat` | `x@insn y@insn DebugInfo?` | Approximate equality operator. Same as `abs(x - y) < 0.0001`.
+210 | `ComplementEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Approximate equality operator. Same as `abs(x - y) < 0.0001`.
 211 | `Subtract_PreVector` | unknown | -
 212 | `Multiply_VectorFloat` | unknown | -
 213 | `Multiply_FloatVector` | unknown | -
@@ -290,8 +290,8 @@ Index | Name | Operands | Description
 237 | `Asc` | unknown | -
 238 | `Locs` | unknown | -
 239 .. 241 | - | - | Hole.
-242 | `EqualEqual_BoolBool` | `x@insn y@insn DebugInfo?` | Compares two booleans `x == y`. The return value is widened to a `uint32_t`.
-243 | `NotEqual_BoolBool` | `x@insn y@insn DebugInfo?` | Compares two booleans `x != y`. The return value is widened to a `uint32_t`.
+242 | `EqualEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x == y`. The return value is widened to a `uint32_t`.
+243 | `NotEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x != y`. The return value is widened to a `uint32_t`.
 244 | `FMin` | unknown | -
 245 | `FMax` | unknown | -
 246 | `FClamp` | unknown | -
@@ -301,9 +301,9 @@ Index | Name | Operands | Description
 250 | `Max` | unknown | -
 251 | `Clamp` | unknown | -
 252 | `VRand` | unknown | -
-253 | `Percent_IntInt` | `x@insn y@insn DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is zero. The log message calls this operation modulo even though it's not.
-254 | `EqualEqual_NameName` | unknown | -
-255 | `NotEqual_NameName` | unknown | -
+253 | `Percent_IntInt` | `x@insn y@insn u8 DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is zero. The log message calls this operation modulo even though it's not.
+254 | `EqualEqual_NameName` | `x@insn y@insn u8 DebugInfo?` | Compares two `FName`s `x == y`. Effectively an alias for `EqualEqual_ObjectObject`, since `FName` and `UObject*` have the same size, so the compiler optimizes this away to share the same function.
+255 | `NotEqual_NameName` | `x@insn y@insn u8 DebugInfo?` | Compares two `FName`s `x != y`. Effectively an alias for `NotEqual_ObjectObject`, since `FName` and `UObject*` have the same size, so the compiler optimizes this away to share the same function.
 256 | `Actor.Sleep` | unknown | -
 257 | - | - | Hole.
 258 | `ClassIsChildOf` | unknown | -
@@ -358,9 +358,9 @@ Index | Name | Operands | Description
 319 | `SubtractEqual_RotatorRotator` | unknown | -
 320 | `RotRand` | unknown | -
 321 | `Actor.CollidingActors` | unknown | -
-322 | `ConcatEqual_StrStr` | unknown | -
-323 | `AtEqual_StrStr` | unknown | -
-324 | `SubtractEqual_StrStr` | unknown | -
+322 | `ConcatEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Concatenates a string `rvalue` onto another string `lvalue` in place.
+323 | `AtEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Joins a string `rvalue` onto another string `lvalue` in place, adding a space inbetween.
+324 | `SubtractEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Removes all occurrences of a string `rvalue` from another string `lvalue` in place.
 325 .. 383 | - | - | Hole.
 384 | `Actor.PollSleep` | unknown | -
 385 | `Actor.PollFinishAnim` | unknown | -
@@ -416,6 +416,7 @@ Index | Name | Operands | Description
   or functionality hasn't been uncovered yet.
   - Certain unknown opcodes are "unknown single-byte opcodes," which mean that they take no
     operands but their name or functionality hasn't been uncovered yet.
+- Unary operators seem to have a `u8` sentinel that is not used nor checked in any way.
 
 ### Function parameters
 
@@ -471,7 +472,9 @@ Engine source code because... well, I don't have the source code.
 
 Bit | Name | Description
 :-: | --- | ---
-2 | Value Omitted | Unset for each parameter in a function; may be set by arguments that do not provide a value through the `EmptyParmValue` instruction.
+0 | unknown | -
+1 | Value Omitted | Unset for each parameter in a function; may be set by arguments that do not provide a value through the `EmptyParmValue` instruction.
+2 | unknown | This is set by `StructMember` and only ever used by `HatLogRedirector`. I'm guessing it may be Hat in Time-specific.
 
 # Primitive casts
 

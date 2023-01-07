@@ -22,7 +22,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Jump) = { POffset };
 	e.Rule(Opcode::JumpIfNot) = { POffset, PInsn };
 	e.Rule(Opcode::JumpIfNotEditorOnly) = { POffset };
-	e.Rule(Opcode::Conditional) = { PInsn, PU16, PInsn, PU16, PInsn };
+	e.Rule(Opcode::Conditional) = { PInsn, POffset, PInsn, POffset, PInsn };
 
 	e.Rule(Opcode::Assert) = { PU16, PU8, PInsn };
 
@@ -36,6 +36,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::False) = { PEmpty };
 	e.Rule(Opcode::ByteConst) = { PU8 };
 	e.Rule(Opcode::IntConst) = { PS32 };
+	e.Rule(Opcode::IntConstByte) = { PU8 };
 	e.Rule(Opcode::FloatConst) = { PFloat };
 	e.Rule(Opcode::ObjectConst) = { PObj };
 	e.Rule(Opcode::NameConst) = { PU64 };
@@ -48,6 +49,7 @@ Encoding yarn::encoding = []() {
 
 	e.Rule(Opcode::Self) = { PEmpty };
 	e.Rule(Opcode::LocalVariable) = { PObj };
+	e.Rule(Opcode::LocalOutVariable) = { PObj };
 	e.Rule(Opcode::InstanceVariable) = { PObj };
 	e.Rule(Opcode::DefaultVariable) = { PObj };
 	e.Rule(Opcode::BoolVariable) = { PInsn };
@@ -58,9 +60,9 @@ Encoding yarn::encoding = []() {
 	// Functions and function calls
 
 	// Calls
-	Primitive fnargs{ PInsns, Opcode::EndFunctionParms };
-	e.Rule(Opcode::VirtualFunction) = { PU64, fnargs, PDebugInfo };
-	e.Rule(Opcode::FinalFunction) = { PObj, fnargs, PDebugInfo };
+	Primitive rFnArgs{ PInsns, Opcode::EndFunctionParms };
+	e.Rule(Opcode::VirtualFunction) = { PU64, rFnArgs, PDebugInfo };
+	e.Rule(Opcode::FinalFunction) = { PObj, rFnArgs, PDebugInfo };
 	e.Rule(Opcode::EmptyParmValue) = { PEmpty };
 	e.Rule(Opcode::EndFunctionParms) = { PEmpty };
 
@@ -78,7 +80,7 @@ Encoding yarn::encoding = []() {
 
 	// Unary operators
 
-	Rule rUnaryOp{ PInsn, PDebugInfo };
+	Rule rUnaryOp{ PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::Not_PreBool) = rUnaryOp;
 	e.Rule(Opcode::Complement_PreInt) = rUnaryOp;
 	e.Rule(Opcode::Subtract_PreInt) = rUnaryOp;
@@ -90,12 +92,22 @@ Encoding yarn::encoding = []() {
 
 	// Binary operators
 
-	Rule rBinaryOp{ PInsn, PInsn, PDebugInfo };
-	e.Rule(Opcode::DynArrayAdd) = rBinaryOp;
+	Rule rBinaryOp{ PInsn, PInsn, PSentinel, PDebugInfo };
+
+	// Bools
+
+	// These bool operators are unlike other binary operators because they short-circuit.
+	Rule rShortCircuitingBinaryOp{ PInsn, PSentinel, POffset, PInsn, PSentinel };
+	e.Rule(Opcode::AndAnd_BoolBool) = rShortCircuitingBinaryOp;
+	e.Rule(Opcode::OrOr_BoolBool) = rShortCircuitingBinaryOp;
+
+	e.Rule(Opcode::EqualEqual_BoolBool) = rBinaryOp;
+	e.Rule(Opcode::NotEqual_BoolBool) = rBinaryOp;
+	e.Rule(Opcode::XorXor_BoolBool) = rBinaryOp;
+
+	// Ints
 	e.Rule(Opcode::Multiply_IntInt) = rBinaryOp;
 	e.Rule(Opcode::Divide_IntInt) = rBinaryOp;
-	e.Rule(Opcode::AndAnd_BoolBool) = rBinaryOp;
-	e.Rule(Opcode::OrOr_BoolBool) = rBinaryOp;
 	e.Rule(Opcode::Add_IntInt) = rBinaryOp;
 	e.Rule(Opcode::LessLess_IntInt) = rBinaryOp;
 	e.Rule(Opcode::GreaterGreater_IntInt) = rBinaryOp;
@@ -112,6 +124,8 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::AddEqual_IntInt) = rBinaryOp;
 	e.Rule(Opcode::SubtractEqual_IntInt) = rBinaryOp;
 	e.Rule(Opcode::Percent_IntInt) = rBinaryOp;
+
+	// Floats
 	e.Rule(Opcode::MultiplyMultiply_FloatFloat) = rBinaryOp;
 	e.Rule(Opcode::Multiply_FloatFloat) = rBinaryOp;
 	e.Rule(Opcode::Divide_FloatFloat) = rBinaryOp;
@@ -129,8 +143,31 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::AddEqual_FloatFloat) = rBinaryOp;
 	e.Rule(Opcode::SubtractEqual_FloatFloat) = rBinaryOp;
 	e.Rule(Opcode::ComplementEqual_FloatFloat) = rBinaryOp;
+
+	// Strings
+	e.Rule(Opcode::Concat_StrStr) = rBinaryOp;
+	e.Rule(Opcode::At_StrStr) = rBinaryOp;
+	e.Rule(Opcode::EqualEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::NotEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::ComplementEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::Less_StrStr) = rBinaryOp;
+	e.Rule(Opcode::LessEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::Greater_StrStr) = rBinaryOp;
+	e.Rule(Opcode::GreaterEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::ConcatEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::AtEqual_StrStr) = rBinaryOp;
+	e.Rule(Opcode::SubtractEqual_StrStr) = rBinaryOp;
+
+	// Names
+	e.Rule(Opcode::EqualEqual_NameName) = rBinaryOp;
+	e.Rule(Opcode::NotEqual_NameName) = rBinaryOp;
+
+	// Objects
 	e.Rule(Opcode::EqualEqual_ObjectObject) = rBinaryOp;
 	e.Rule(Opcode::NotEqual_ObjectObject) = rBinaryOp;
+
+	// Dynamic arrays
+	e.Rule(Opcode::DynArrayAdd) = rBinaryOp;
 
 	// Casts
 
@@ -143,6 +180,7 @@ Encoding yarn::encoding = []() {
 
 	e.Rule(Opcode::New) = { PInsn, PInsn, PInsn, PInsn, PInsn };
 	e.Rule(Opcode::Context) = { PInsn, PU16, PObj, PU8, PInsn };
+	e.Rule(Opcode::ClassContext) = { PInsn, PU16, PObj, PU8, PInsn };
 
 	// Dynamic arrays
 

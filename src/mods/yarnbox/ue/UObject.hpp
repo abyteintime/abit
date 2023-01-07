@@ -1,5 +1,6 @@
 #pragma once
 
+#include "yarnbox/ue/FName.hpp"
 #include "yarnbox/ue/FString.hpp"
 
 namespace ue {
@@ -20,7 +21,7 @@ struct UObject
 	int32_t objectIndex;
 	int32_t int_U;
 	UObject* outer;
-	void* ptr6_U;
+	FName ptr6_U;
 	struct UClass* objectClass;
 	void* ptr7_U;
 
