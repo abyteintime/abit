@@ -142,7 +142,7 @@ Index | Name | Operands | Description
 73 | `DefaultParmValue` | `jump@orel default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If the Value Omitted flag is not set (an argument to the function is provided,) the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
 74 | `EmptyParmValue` | - | Sets the Value Omitted flag, and nulls out `GPropObject`, `GPropAddress`, and `GProperty`.
 75 | `InstanceDelegate` | unknown | -
-76 .. 80 | - | Invalid opcodes.
+76 .. 80 | - | - | Invalid opcodes.
 81 | `InterfaceContext` | `insn` | -
 82 | `InterfaceCast` | `interface@insn` | Casts the context object to an interface using [primitive cast](#primitive-casts) 70 `ObjectToInterface`.
 83 | `EndOfScript` | - | Sentinel placed at the end of all chunks of bytecode.
@@ -151,7 +151,7 @@ Index | Name | Operands | Description
 86 | `DynArrayRemoveItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
 87 | `DynArrayInsertItem` | `array@insn jumpoffset@orel index@insn item@insn u8 DebugInfo?` | Like `DynArrayAddItem`, but for inserting at a given index.
 88 | `DynArrayIterator` | `array@insn outelement@insn outindex@insn u8 jump@orel (!opcode.Continue insn)* opcode.Continue` | Iterates over all elements inside a dynamic array `array`. `outelement` is the location in which to store the current element, `outindex` is the location in which to store the current index. The latter is optional and `EmptyParmValue` can be used to not store the index. Followed by that is the length(?) of the iterator body, so that the iterator knows how many bytes to jump over when the iteration is that. After that there's the body itself, which is what the iterator is going to execute every iteration.
-89 | `DynArraySort` | unknown | Even worse for this.
+89 | `DynArraySort` | unknown | -
 90 | `JumpIfNotEditorOnly` | `oabs` | Does nothing, since this is a game build.
 91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
@@ -171,7 +171,7 @@ Index | Name | Operands | Description
 110 | `HighNative14` | `n@byte` | This one executes opcode `3584 + n`.
 111 | `HighNative15` | `n@byte` | This one executes opcode `3840 + n`. Having all the `HighNative` opcodes allows for execution of opcodes up to 4095.
 112 | `Concat_StrStr` | `a@insn b@insn u8 DebugInfo?` | Concatenates two strings together.
-113 | `GotoState` | unknown | -
+113 | `GotoState` | `state@insn label@insn forceevents@insn keepstack@insn u8 DebugInfo?` | Enters the given `state` from the given `label`. If `forceevents` is true, emits `BeginState` and `EndState` events even if transitioning to the same state. If `keepstack` is false, the state stack is cleared when this is called.
 114 | `EqualEqual_ObjectObject` | `a@insn b@insn u8 DebugInfo?` | Compares two objects `a == b`.
 115 | `Less_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a < b` lexicographically.
 116 | `Greater_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a > b` lexicographically.
@@ -327,10 +327,10 @@ Index | Name | Operands | Description
 278 | - | - | Hole.
 279 | `Actor.Destroy` | `fnargs` | -
 280 | `Actor.SetTimer` | `fnargs` | -
-281 | `IsInState` | unknown | -
+281 | `IsInState` | `state@insn teststack@insn u8 DebugInfo?` | Returns whether the object is currently running the given `state`. If `teststack` is true, looks through all states on the state stack. Otherwise, only looks at the topmost state on the stack. When `teststack` is false this also checks base states (inheritance.)
 282 | - | - | Hole.
 283 | `Actor.SetCollisionSize` | `fnargs` | -
-284 | `GetStateName` | unknown | -
+284 | `GetStateName` | `u8 DebugInfo?` | Returns the name of the current state.
 285 .. 286 | - | - | Hole.
 287 | `Multiply_RotatorFloat` | `x@insn y@insn u8 DebugInfo?` | -
 288 | `Multiply_FloatRotator` | `x@insn y@insn u8 DebugInfo?` | -

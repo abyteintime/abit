@@ -339,6 +339,12 @@ Encoding yarn::encoding = []() {
 
 	e.Rule(Opcode::DynArrayIterator) = { PInsn, PInsn, PSentinel, PInsn, PORel };
 
+	// States
+
+	e.Rule(Opcode::GotoState) = rFn4;
+	e.Rule(Opcode::IsInState) = rFn2;
+	e.Rule(Opcode::GetStateName) = rFn0;
+
 	// Actor
 
 	e.Rule(Opcode::Actor_Sleep) = rFn1;
