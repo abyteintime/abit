@@ -118,7 +118,7 @@ Index | Name | Operands | Description
 49 | `Continue` | N/A | Emitted at the end of `Iterator` bodies. Signals to the iterator that the body should be executed from the beginning.
 50 | `StructCmpEq` | `struct@obj a@insn b@insn` | Compares two structs of the type `struct` for equality `a == b`.
 51 | `StructCmpNe` | `struct@obj a@insn b@insn` | Compares two structs of the type `struct` for inequality `a != b`.
-52 | `UnicodeStringConst` | unknown | -
+52 | `UnicodeStringConst` | `string@((!(0 0) u16 u16)* 0 0)` | Like `StringConst`, but for strings with Unicode characters in them. The characters are encoded as UTF-16.
 53 | `StructMember` | `struct@obj field@obj u8 u8 insn` | -
 54 | `DynArrayLength` | `array@insn` | Expects that `array` loads an array property into `GProperty`, `GPropObject`, and `GPropAddr`, then reads the length of the array into the return value.
 55 | `GlobalFunction` | `name@name fnargs` | Calls a global function by name.
@@ -151,7 +151,7 @@ Index | Name | Operands | Description
 86 | `DynArrayRemoveItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
 87 | `DynArrayInsertItem` | `array@insn jumpoffset@orel index@insn item@insn u8 DebugInfo?` | Like `DynArrayAddItem`, but for inserting at a given index.
 88 | `DynArrayIterator` | `array@insn outelement@insn outindex@insn u8 jump@orel (!opcode.Continue insn)* opcode.Continue` | Iterates over all elements inside a dynamic array `array`. `outelement` is the location in which to store the current element, `outindex` is the location in which to store the current index. The latter is optional and `EmptyParmValue` can be used to not store the index. Followed by that is the length(?) of the iterator body, so that the iterator knows how many bytes to jump over when the iteration is that. After that there's the body itself, which is what the iterator is going to execute every iteration.
-89 | `DynArraySort` | `array@insn jumpoffset@orel insn` | -
+89 | `DynArraySort` | `array@insn jumpoffset@orel cmp@insn` | Sorts an `array` using the comparison delegate `cmp`.
 90 | `JumpIfNotEditorOnly` | `oabs` | Does nothing, since this is a game build.
 91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
