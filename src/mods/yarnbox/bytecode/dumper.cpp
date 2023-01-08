@@ -146,6 +146,10 @@ DumpPrimRec(
 			AddIndent(level, outString);
 			fmt::format_to(out, "s \"{}\"\n", tree.strings[value]);
 			break;
+		case PWideString:
+			AddIndent(level, outString);
+			fmt::format_to(out, "s L\"{}\"\n", abit::Narrow(tree.wideStrings[value]));
+			break;
 
 		case PInsn:
 		case PPrimitiveCast:

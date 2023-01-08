@@ -86,7 +86,7 @@ static void
 PrintDisassemblyStats()
 {
 	spdlog::info(
-		"Disassembly stats: attempted {}, successful {}. Success rate is {:.2}%",
+		"Disassembly stats: attempted {}, successful {}. Success rate is {:.2f}%",
 		attemptedDisassemblies,
 		functionsSuccessfullyDisassembled,
 		float(functionsSuccessfullyDisassembled) / float(attemptedDisassemblies) * 100.f

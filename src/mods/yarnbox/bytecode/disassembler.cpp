@@ -67,6 +67,18 @@ Disassembler::InterpretPrimitive(Opcode contextOpcode, size_t contextIp, Primiti
 			return outTree->AppendString(std::move(ansiString));
 		}
 
+		case PWideString: {
+			size_t start = ip;
+			wchar_t c;
+			do {
+				c = NextU16();
+			} while (c != L'\0');
+			size_t end = ip;
+			const wchar_t* data = reinterpret_cast<const wchar_t*>(&bytecode[start]);
+			std::wstring wideString{ std::wstring_view(data, end - start) };
+			return outTree->AppendWideString(std::move(wideString));
+		}
+
 		case PSentinel:
 			NextU8();
 			return std::nullopt;

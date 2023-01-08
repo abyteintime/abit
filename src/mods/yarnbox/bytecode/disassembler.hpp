@@ -46,7 +46,7 @@ private:
 	BytecodeTree::NodeIndex DisassembleOpcode(size_t ipAtStart, Opcode opcode);
 
 	inline uint8_t CurrentByte() const { return AtEnd() ? 0 : bytecode[ip]; }
-	inline void Advance(size_t by = 1) { ip += by; }
+	inline void Advance(ptrdiff_t by = 1) { ip += by; }
 
 	inline Opcode CurrentLowOpcode() const
 	{
@@ -96,6 +96,11 @@ private:
 	{
 		if (CurrentLowOpcode() == Opcode::DebugInfo) {
 			NextU8();
+			if (CurrentByte() == 100) {
+				// DebugInfo is not supported.
+				__debugbreak();
+			}
+			Advance(-1);
 		}
 	}
 

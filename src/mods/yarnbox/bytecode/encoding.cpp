@@ -24,6 +24,9 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::JumpIfNotEditorOnly) = { POAbs };
 	e.Rule(Opcode::Conditional) = { PInsn, PORel, PInsn, PORel, PInsn };
 
+	e.Rule(Opcode::Switch) = { PObj, PU8, PInsn };
+	e.Rule(Opcode::Case) = { POAbs, PInsn };
+
 	e.Rule(Opcode::Assert) = { PU16, PU8, PInsn };
 
 	e.Rule(Opcode::GotoLabel) = { PInsn };
@@ -43,6 +46,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::ObjectConst) = { PObj };
 	e.Rule(Opcode::NameConst) = { PName };
 	e.Rule(Opcode::StringConst) = { PAnsiString };
+	e.Rule(Opcode::UnicodeStringConst) = { PWideString };
 	e.Rule(Opcode::RotationConst) = { PFloat, PFloat, PFloat };
 	e.Rule(Opcode::VectorConst) = { PFloat, PFloat, PFloat };
 	e.Rule(Opcode::NoObject) = { PEmpty };
@@ -222,6 +226,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Normal2D) = rFn1;
 	e.Rule(Opcode::VRand) = rFn0;
 	e.Rule(Opcode::IsZero) = rFn1;
+	e.Rule(Opcode::MirrorVectorByNormal) = rFn2;
 
 	// Rotators
 
@@ -239,6 +244,11 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Subtract_RotatorRotator) = rFn2;
 	e.Rule(Opcode::AddEqual_RotatorRotator) = rFn2;
 	e.Rule(Opcode::SubtractEqual_RotatorRotator) = rFn2;
+
+	// Functions
+	e.Rule(Opcode::GetAxes) = rFn4;
+	e.Rule(Opcode::GetUnAxes) = rFn4;
+	e.Rule(Opcode::RotRand) = rFn1;
 
 	// Strings
 
@@ -285,6 +295,8 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::ClassIsChildOf) = rFn2;
 	e.Rule(Opcode::IsA) = rFn1;
 
+	e.Rule(Opcode::SaveConfig) = rFn0;
+
 	// Structs
 
 	e.Rule(Opcode::StructCmpEq) = { PObj, PInsn, PInsn };
@@ -330,6 +342,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::DynArrayRemoveItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::DynArrayFind) = { PInsn, PORel, PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::DynArrayFindStruct) = { PInsn, PORel, PInsn, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArraySort) = { PInsn, PORel, PInsn, PSentinel, PDebugInfo };
 
 	// Iterators
 
@@ -379,6 +392,18 @@ Encoding yarn::encoding = []() {
 
 	e.Rule(Opcode::Controller_GetURLMap) = rFn0;
 	e.Rule(Opcode::Controller_FastTrace) = rFn4;
+	e.Rule(Opcode::Controller_LineOfSightTo) = rFn3;
+	e.Rule(Opcode::Controller_ActorReachable) = rFn1;
+	e.Rule(Opcode::Controller_PointReachable) = rFn1;
+	e.Rule(Opcode::Controller_PickTarget) = rFn6;
+	e.Rule(Opcode::Controller_FindPathTo) = rFn3;
+
+	e.Rule(Opcode::PlayerController_UpdateURL) = rFn3;
+
+	// Miscellaneous
+
+	e.Rule(Opcode::Disable) = rFn1;
+	e.Rule(Opcode::Enable) = rFn1;
 
 	return e;
 }();

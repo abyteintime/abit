@@ -39,6 +39,14 @@ BytecodeTree::AppendString(std::string&& string)
 	return index;
 }
 
+BytecodeTree::DataIndex
+BytecodeTree::AppendWideString(std::wstring&& wideString)
+{
+	DataIndex index = wideStrings.size();
+	wideStrings.push_back(std::move(wideString));
+	return index;
+}
+
 void
 BytecodeTree::SetFirstErrorIfNull(size_t ip)
 {

@@ -71,12 +71,12 @@ Index | Name | Operands | Description
 2 | `DefaultVariable` | `property@obj` | Similar to InstanceVariable but reads from the class default object.
 3 | `StateVariable` | `property@obj` | -
 4 | `Return` | `value@insn` | So common that it's probably the return opcode. Looking at some functions' source code it would seem like the return opcode indeed; however I haven't found its handling code yet. Since it terminates the execution of a function it cannot be an `exec`.
-5 | `Switch` | unknown | Switch on a couple values. Not sure how this works quite yet.
+5 | `Switch` | N/A | See [Switch](#switch) for a description of how this opcode works and interacts with `Case`.
 6 | `Jump` | `offset@oabs` | Unconditional jump to 16-bit absolute `offset` inside the current chunk of bytecode.
 7 | `JumpIfNot` | `offset@oabs cond@insn` | Conditional jump to 16-bit absolute `offset`. Jumps if `cond` returns zero.
 8 | `Stop` | - | Sets the instruction pointer to the null pointer, which causes a crash.
 9 | `Assert` | `line@u16 category@u8 cond@insn` | Logs an error message if `cond` is evaluated to zero. The error message is `Assertion failed, line %i` with the format operand being `line`. `category` can be 0 to change the log category to `0x2f9` instead of `0x301`; I haven't discovered what all these categories are called yet.
-10 | `Case` | unknown | Probably something to do with `Switch`, but I haven't reversed this yet.
+10 | `Case` | N/A | Marker used inside of `Switch`, should not appear on its own. See [Switch](#switch) for a description of how this opcode works and interacts with `Switch`.
 11 | `Nothing` | - | Literally does nothing.
 12 | unknown | unknown | -
 13 | `GotoLabel` | `insn` | -
@@ -151,7 +151,7 @@ Index | Name | Operands | Description
 86 | `DynArrayRemoveItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
 87 | `DynArrayInsertItem` | `array@insn jumpoffset@orel index@insn item@insn u8 DebugInfo?` | Like `DynArrayAddItem`, but for inserting at a given index.
 88 | `DynArrayIterator` | `array@insn outelement@insn outindex@insn u8 jump@orel (!opcode.Continue insn)* opcode.Continue` | Iterates over all elements inside a dynamic array `array`. `outelement` is the location in which to store the current element, `outindex` is the location in which to store the current index. The latter is optional and `EmptyParmValue` can be used to not store the index. Followed by that is the length(?) of the iterator body, so that the iterator knows how many bytes to jump over when the iteration is that. After that there's the body itself, which is what the iterator is going to execute every iteration.
-89 | `DynArraySort` | unknown | -
+89 | `DynArraySort` | `array@insn jumpoffset@orel insn` | -
 90 | `JumpIfNotEditorOnly` | `oabs` | Does nothing, since this is a game build.
 91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
@@ -175,8 +175,8 @@ Index | Name | Operands | Description
 114 | `EqualEqual_ObjectObject` | `a@insn b@insn u8 DebugInfo?` | Compares two objects `a == b`.
 115 | `Less_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a < b` lexicographically.
 116 | `Greater_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a > b` lexicographically.
-117 | `Enable` | unknown | -
-118 | `Disable` | unknown | -
+117 | `Enable` | `probefunc@insn u8 DebugInfo?` | -
+118 | `Disable` | `probefunc@insn u8 DebugInfo?` | -
 119 | `NotEqual_ObjectObject` | `a@insn b@insn u8 DebugInfo?` | Compares two objects `a != b`.
 120 | `LessEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a <= b` lexicographically.
 121 | `GreaterEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a >= b` lexicographically.
@@ -282,8 +282,8 @@ Index | Name | Operands | Description
 226 | `Normal` | `vec@insn u8 DebugInfo?` | Returns the vector `vec`, normalized. This is the same as `vec / VSize(vec)`.
 227 | `Normal2D` | `vec@insn u8 DebugInfo?` | -
 228 | `VSizeSq` | `vec@insn u8 DebugInfo?` | Same as `VSize`, except the result is not square-rooted. As such this is equivalent to `vec.X * vec.X + vec.Y * vec.Y`.
-229 | `GetAxes` | unknown | -
-230 | `GetUnAxes` | unknown | -
+229 | `GetAxes` | `rot@insn x@insn y@insn z@insn u8 DebugInfo?` | Stores the local space XYZ axes for the rotator `rot` inside the variables `x`, `y`, and `z`.
+230 | `GetUnAxes` | `rot@insn x@insn y@insn z@insn u8 DebugInfo?` | -
 231 | `LogInternal` | unknown | -
 232 | `WarnInternal` | unknown | -
 233 | - | - | Hole.
@@ -342,7 +342,7 @@ Index | Name | Operands | Description
 297 | `MultiplyEqual_VectorVector` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies the vector stored in the variable `lvalue` by the vector `rvalue` in place.
 298 | `Actor.SetBase` | `fnargs` | -
 299 | `Actor.SetRotation` | `fnargs` | -
-300 | `MirrorVectorByNormal` | unknown | -
+300 | `MirrorVectorByNormal` | `vec@insn normal@insn` | -
 301 .. 303 | - | - | Hole.
 304 | `Actor.AllActors` | `fnargs` | -
 305 | `Actor.ChildActors` | `fnargs` | -
@@ -378,13 +378,13 @@ Index | Name | Operands | Description
 510 .. 511 | - | - | Hole.
 512 | `Actor.MakeNoise` | `fnargs` | -
 513 | - | - | Hole.
-514 | `Controller.LineOfSightTo` | unknown | -
+514 | `Controller.LineOfSightTo` | `fnargs` | -
 515 .. 516 | - | - | Hole.
 517 | `Controller.FindPathToward` | unknown | -
-518 | `Controller.FindPathTo` | unknown | -
+518 | `Controller.FindPathTo` | `fnargs` | -
 519 | - | - | Hole.
-520 | `Controller.ActorReachable` | unknown | -
-521 | `Controller.PointReachable` | unknown | -
+520 | `Controller.ActorReachable` | `fnargs` | -
+521 | `Controller.PointReachable` | `fnargs` | -
 522 .. 523 | - | - | Hole.
 524 | `PlayerController.FindStairRotation` | unknown | -
 525 | `Controller.FindRandomDest` | unknown | -
@@ -392,16 +392,16 @@ Index | Name | Operands | Description
 527 | `Controller.WaitForLanding` | unknown | -
 528 | `Controller.PollWaitForLanding` | unknown | -
 529 .. 530 | - | - | Hole.
-531 | `Controller.PickTarget` | unknown | -
+531 | `Controller.PickTarget` | `fnargs` | -
 532 | `Actor.PlayerCanSeeMe` | `fnargs` | -
 533 | `Controller.CanSee` | unknown | -
 534 .. 535 | - | - | Hole.
-536 | `SaveConfig` | unknown | -
+536 | `SaveConfig` | `u8 DebugInfo?` | Saves the INI configuration for this object. This isn't really described in the UnrealScript source, but I guess it has something to do with the `config` specifier on classes.
 537 | `Controller.CanSeeByPoints` | unknown | -
 538 .. 545 | - | - | Hole.
-546 | `PlayerController.UpdateURL` | unknown | -
-547 | `Controller.GetURLMap` | unknown | -
-548 | `Controller.FastTrace` | unknown | -
+546 | `PlayerController.UpdateURL` | `fnargs` | -
+547 | `Controller.GetURLMap` | `fnargs` | -
+548 | `Controller.FastTrace` | `fnargs` | -
 549 .. 1499 | - | - | Hole.
 1500 | `ProjectOnTo` | unknown | -
 1501 | `IsZero` | `vec@insn u8 DebugInfo?` | Returns whether a vector is exactly equal to `vect(0, 0, 0)`.
@@ -464,13 +464,40 @@ Whenever this flag is set, the corresponding parameter's `DefaultParmValue` inst
 zero or more instructions to initialize the parameter. If this flag is not set however, the entire
 section that initializes the parameter is skipped over.
 
+## Switch
+
+`Switch` is quite a complicated opcode, so it's getting its own section here.
+
+A minimal, unstructured representation for a switch might look as follows:
+```
+operands.Switch <- property@obj type@u8 value@insn
+operands.Case <- jump@oabs reference@insn
+```
+This is enough for deserialization and basic use, but it's important to understand that the `Switch`
+instruction has special behavior for the `Case` opcode.
+
+A more structured representation accounting for this might look as follows:
+```
+operands.Case <- jump@oabs reference@insn
+lastcase <- opcode.Case 255 255
+
+operands.Switch <- property@obj type@u8 value@insn ((!lastcase Case)+ insn*) lastcase
+```
+For simplicity's sake, Yarnbox chooses the simpler, unstructured representation, as the latter would
+require a specialized parsing primitive, which increases complexity without good reason.
+
+`Switch` first evaluates the `value` that is provided to it. Then, for each `Case`, until the one
+whose `jump` is equal to `0xFFFF`, it evaluates the `Case`'s `reference` operand, and compares it
+against the `Switch` `value` byte-wise. If the values are not the same, the next case is jumped to,
+whose location is specified by the `Case`'s `jump` operand.
+
 ## Yarnbox extensions
 
 Yarnbox reserves the following otherwise free opcodes for implementing its functionality:
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
-4039 +  | Primitive casts | N/A | To reuse
+4039 .. 4093 | Primitive casts | N/A | These are used to simplify the decompiler a bunch, such that the parsing of primitive casts can be done by the
 4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
 4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded.
 
@@ -487,6 +514,8 @@ Bit | Name | Description
 2 | unknown | This is set by `StructMember` and only ever used by `HatLogRedirector`. I'm guessing it may be Hat in Time-specific.
 
 # Primitive casts
+
+Most primitive casts' operands are encoded as `value@insn`, where `value` is the value to perform the cast on. Exceptions are described in the **Comment** column.
 
 The `PrimitiveCast` opcode supports up to 255 different casts. Here is a table listing all the
 known ones:
@@ -510,7 +539,7 @@ Index | Name | Comment
 67 | `FloatToByte` | -
 68 | `FloatToInt` | -
 69 | `FloatToBool` | -
-70 | `ObjectToInterface` | -
+70 | `ObjectToInterface` | The encoding of this is `interface@obj value@insn`, where `interface` is the interface class to cast to.
 71 | `ObjectToBool` | -
 72 | `NameToBool` | -
 73 | `StringToByte` | -

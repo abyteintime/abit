@@ -42,12 +42,14 @@ struct BytecodeTree
 	std::vector<Node> nodes;
 	std::vector<uint64_t> data;
 	std::vector<std::string> strings;
+	std::vector<std::wstring> wideStrings;
 	std::optional<size_t> firstError = std::nullopt;
 
 	NodeIndex AppendNode(Node node);
 	DataIndex AppendData(size_t count);
 	DataIndex AppendDataFromVector(const std::vector<uint64_t>& source);
 	DataIndex AppendString(std::string&& string);
+	DataIndex AppendWideString(std::wstring&& wideString);
 
 	void SetFirstErrorIfNull(size_t ip);
 	bool IsBytecodeBogusAt(size_t ip) const;

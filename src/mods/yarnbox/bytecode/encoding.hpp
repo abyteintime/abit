@@ -21,6 +21,7 @@ enum Type : uint8_t
 	PInsns,         // multi-instruction operand terminated by a sentinel - the argument
 	PDebugInfo,     // optional DebugInfo instruction
 	PAnsiString,    // NUL-terminated ANSI string
+	PWideString,    // NUL-terminated UTF-16 string
 	PSentinel,      // u8 value (has no data)
 	PPrimitiveCast, // PrimitiveCast operand
 };
