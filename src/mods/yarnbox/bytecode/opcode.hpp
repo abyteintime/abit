@@ -306,27 +306,88 @@ namespace yarn {
 	EXPAND(Controller_CanSeeByPoints, 537) \
 	EXPAND(PlayerController_UpdateURL, 546) \
 	EXPAND(Controller_GetURLMap, 547) \
-	EXPAND(FastTrace, 548) \
+	EXPAND(Controller_FastTrace, 548) \
 	EXPAND(ProjectOnTo, 1500) \
 	EXPAND(IsZero, 1501) \
 	EXPAND(Actor_MoveSmooth, 3969) \
 	EXPAND(Actor_SetPhysics, 3970) \
 	EXPAND(Actor_AutonomousPhysics, 3971) \
+	EXPAND(FlattenedPrimitiveCast, 4051) \
 	EXPAND(OutOfBounds, 4094) \
 	EXPAND(Unknown, 4095)
 
-#define YARN__EXPAND_OPCODE_AS_ENUM(name, index) name = index,
+#define YARN__EXPAND_AS_ENUM_MEMBERS(name, index) name = index,
 
 enum class Opcode
 {
-	YARN_X_OPCODES(YARN__EXPAND_OPCODE_AS_ENUM)
+	YARN_X_OPCODES(YARN__EXPAND_AS_ENUM_MEMBERS)
 };
 
 constexpr size_t opcodeCount = 4096;
 
-#undef YARN__EXPAND_OPCODE_AS_ENUM
+std::string_view
+OpcodeToString(Opcode opcode);
+
+#define YARN_X_PRIMITIVE_CASTS(EXPAND) \
+	EXPAND(InterfaceToObject, 54) \
+	EXPAND(InterfaceToString, 55) \
+	EXPAND(InterfaceToBool, 56) \
+	EXPAND(RotatorToVector, 57) \
+	EXPAND(ByteToInt, 58) \
+	EXPAND(ByteToBool, 59) \
+	EXPAND(ByteToFloat, 60) \
+	EXPAND(IntToByte, 61) \
+	EXPAND(IntToBool, 62) \
+	EXPAND(IntToFloat, 63) \
+	EXPAND(BoolToByte, 64) \
+	EXPAND(BoolToInt, 65) \
+	EXPAND(BoolToFloat, 66) \
+	EXPAND(FloatToByte, 67) \
+	EXPAND(FloatToInt, 68) \
+	EXPAND(FloatToBool, 69) \
+	EXPAND(ObjectToInterface, 70) \
+	EXPAND(ObjectToBool, 71) \
+	EXPAND(NameToBool, 72) \
+	EXPAND(StringToByte, 73) \
+	EXPAND(StringToInt, 74) \
+	EXPAND(StringToBool, 75) \
+	EXPAND(StringToFloat, 76) \
+	EXPAND(StringToVector, 77) \
+	EXPAND(StringToRotator, 78) \
+	EXPAND(VectorToBool, 79) \
+	EXPAND(VectorToRotator, 80) \
+	EXPAND(RotatorToBool, 81) \
+	EXPAND(ByteToString, 82) \
+	EXPAND(IntToString, 83) \
+	EXPAND(BoolToString, 84) \
+	EXPAND(FloatToString, 85) \
+	EXPAND(ObjectToString, 86) \
+	EXPAND(NameToString, 87) \
+	EXPAND(VectorToString, 88) \
+	EXPAND(RotatorToString, 89) \
+	EXPAND(DelegateToString, 90) \
+	EXPAND(StringToName, 96)
+
+enum class PrimitiveCast : uint8_t
+{
+	YARN_X_PRIMITIVE_CASTS(YARN__EXPAND_AS_ENUM_MEMBERS)
+};
+
+constexpr size_t primitiveCastCount = 256;
+constexpr size_t firstPrimitiveCast = static_cast<size_t>(PrimitiveCast::InterfaceToObject);
+
+#undef YARN__EXPAND_AS_ENUM_MEMBERS
+
+static inline constexpr Opcode
+PrimitiveCastToOpcode(PrimitiveCast cast)
+{
+	return Opcode(size_t(cast) - firstPrimitiveCast + size_t(Opcode::FlattenedPrimitiveCast));
+}
 
 std::string_view
 OpcodeToString(Opcode opcode);
+
+std::string_view
+PrimitiveCastToString(PrimitiveCast cast);
 
 }

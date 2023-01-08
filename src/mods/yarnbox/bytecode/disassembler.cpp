@@ -79,6 +79,12 @@ Disassembler::InterpretPrimitive(Opcode contextOpcode, size_t contextIp, Primiti
 			Advance(); // skip the sentinel byte
 			return outTree->AppendDataFromVector(insns);
 		}
+
+		case PPrimitiveCast: {
+			PrimitiveCast cast = static_cast<PrimitiveCast>(NextU8());
+			Opcode opcode = PrimitiveCastToOpcode(cast);
+			return DisassembleOpcode(contextIp, opcode);
+		}
 	}
 }
 
@@ -87,6 +93,12 @@ Disassembler::Disassemble()
 {
 	size_t ipAtStart = ip;
 	Opcode opcode = NextOpcode();
+	return DisassembleOpcode(ipAtStart, opcode);
+}
+
+NodeIndex
+Disassembler::DisassembleOpcode(size_t ipAtStart, Opcode opcode)
+{
 	Node node = Node{ ipAtStart, opcode };
 
 	if (opcode == Opcode::OutOfBounds) {

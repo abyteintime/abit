@@ -28,6 +28,8 @@ Encoding yarn::encoding = []() {
 
 	e.Rule(Opcode::GotoLabel) = { PInsn };
 
+	e.Rule(Opcode::EatReturnValue) = { PObj, PInsn };
+
 	// Constants
 
 	e.Rule(Opcode::IntZero) = { PEmpty };
@@ -56,7 +58,6 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Let) = { PInsn, PInsn };
 	e.Rule(Opcode::LetBool) = { PInsn, PInsn };
 	e.Rule(Opcode::LetDelegate) = { PInsn, PInsn };
-	e.Rule(Opcode::StructMember) = { PObj, PObj, PU8, PU8, PInsn };
 	e.Rule(Opcode::ArrayElement) = { PInsn, PInsn };
 
 	// Functions and function calls
@@ -88,6 +89,10 @@ Encoding yarn::encoding = []() {
 	Rule rFn1{ PInsn, PSentinel, PDebugInfo };
 	Rule rFn2{ PInsn, PInsn, PSentinel, PDebugInfo };
 	Rule rFn3{ PInsn, PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn4{ PInsn, PInsn, PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn5{ PInsn, PInsn, PInsn, PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn6{ PInsn, PInsn, PInsn, PInsn, PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn7plus{ rFnArgs, PDebugInfo };
 
 	// Bools
 
@@ -116,6 +121,7 @@ Encoding yarn::encoding = []() {
 
 	// Ints
 
+	// Operators
 	e.Rule(Opcode::Complement_PreInt) = rFn1;
 	e.Rule(Opcode::Subtract_PreInt) = rFn1;
 	e.Rule(Opcode::AddAdd_PreInt) = rFn1;
@@ -141,6 +147,14 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::AddEqual_IntInt) = rFn2;
 	e.Rule(Opcode::SubtractEqual_IntInt) = rFn2;
 	e.Rule(Opcode::Percent_IntInt) = rFn2;
+	e.Rule(Opcode::MultiplyEqual_IntFloat) = rFn2;
+	e.Rule(Opcode::DivideEqual_IntFloat) = rFn2;
+
+	// Functions
+	e.Rule(Opcode::Rand) = rFn1;
+	e.Rule(Opcode::Min) = rFn2;
+	e.Rule(Opcode::Max) = rFn2;
+	e.Rule(Opcode::Clamp) = rFn3;
 
 	// Floats
 
@@ -179,6 +193,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::FMax) = rFn2;
 	e.Rule(Opcode::FClamp) = rFn3;
 	e.Rule(Opcode::Lerp) = rFn3;
+	e.Rule(Opcode::Round) = rFn1;
 
 	// Vectors
 
@@ -205,6 +220,8 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::VSizeSq) = rFn1;
 	e.Rule(Opcode::Normal) = rFn1;
 	e.Rule(Opcode::Normal2D) = rFn1;
+	e.Rule(Opcode::VRand) = rFn0;
+	e.Rule(Opcode::IsZero) = rFn1;
 
 	// Rotators
 
@@ -225,6 +242,7 @@ Encoding yarn::encoding = []() {
 
 	// Strings
 
+	// Operators
 	e.Rule(Opcode::Concat_StrStr) = rFn2;
 	e.Rule(Opcode::At_StrStr) = rFn2;
 	e.Rule(Opcode::EqualEqual_StrStr) = rFn2;
@@ -237,6 +255,18 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::ConcatEqual_StrStr) = rFn2;
 	e.Rule(Opcode::AtEqual_StrStr) = rFn2;
 	e.Rule(Opcode::SubtractEqual_StrStr) = rFn2;
+
+	// Functions
+	e.Rule(Opcode::Len) = rFn1;
+	e.Rule(Opcode::InStr) = rFn5;
+	e.Rule(Opcode::Mid) = rFn3;
+	e.Rule(Opcode::Left) = rFn2;
+	e.Rule(Opcode::Right) = rFn2;
+	e.Rule(Opcode::Caps) = rFn1;
+	e.Rule(Opcode::Locs) = rFn1;
+	e.Rule(Opcode::Chr) = rFn1;
+	e.Rule(Opcode::Asc) = rFn1;
+	e.Rule(Opcode::Repl) = rFn4;
 
 	// Names
 
@@ -255,12 +285,28 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::ClassIsChildOf) = rFn2;
 	e.Rule(Opcode::IsA) = rFn1;
 
+	// Structs
+
+	e.Rule(Opcode::StructCmpEq) = { PObj, PInsn, PInsn };
+	e.Rule(Opcode::StructCmpNe) = { PObj, PInsn, PInsn };
+	e.Rule(Opcode::StructMember) = { PObj, PObj, PU8, PU8, PInsn };
+
 	// Casts
 
-	e.Rule(Opcode::InterfaceCast) = { PEmpty };
-	e.Rule(Opcode::PrimitiveCast) = { PU8, PInsn };
+	e.Rule(Opcode::InterfaceCast) = { PObj, PInsn };
+	e.Rule(Opcode::PrimitiveCast) = { PPrimitiveCast };
 	e.Rule(Opcode::MetaCast) = { PObj, PInsn };
 	e.Rule(Opcode::DynamicCast) = { PObj, PInsn };
+
+	// Most primitive casts are simple and only accept a single instruction.
+	for (size_t i = size_t(PrimitiveCast::InterfaceToObject);
+		 i <= size_t(PrimitiveCast::StringToName);
+		 ++i) {
+		PrimitiveCast cast = static_cast<PrimitiveCast>(i);
+		e.Rule(cast) = { PInsn };
+	}
+	// Other casts are a little different.
+	e.Rule(PrimitiveCast::ObjectToInterface) = e.Rule(Opcode::InterfaceCast);
 
 	// Delegates
 
@@ -292,6 +338,41 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Continue) = { PEmpty };
 
 	e.Rule(Opcode::DynArrayIterator) = { PInsn, PInsn, PSentinel, PInsn, PORel };
+
+	// Actor
+
+	e.Rule(Opcode::Actor_Sleep) = rFn1;
+	e.Rule(Opcode::Actor_FinishAnim) = rFn2;
+	e.Rule(Opcode::Actor_SetCollision) = rFn3;
+	e.Rule(Opcode::Actor_SetCollisionSize) = rFn2;
+	e.Rule(Opcode::Actor_Move) = rFn1;
+	e.Rule(Opcode::Actor_SetLocation) = rFn1;
+	e.Rule(Opcode::Actor_SetRotation) = rFn1;
+	e.Rule(Opcode::Actor_MoveSmooth) = rFn1;
+	e.Rule(Opcode::Actor_AutonomousPhysics) = rFn1;
+	e.Rule(Opcode::Actor_SetBase) = rFn4;
+	e.Rule(Opcode::Actor_SetOwner) = rFn1;
+	e.Rule(Opcode::Actor_SetPhysics) = rFn1;
+	e.Rule(Opcode::Actor_Trace) = rFn7plus;
+	e.Rule(Opcode::Actor_Destroy) = rFn0;
+	e.Rule(Opcode::Actor_SetTimer) = rFn5;
+	e.Rule(Opcode::Actor_MakeNoise) = rFn2;
+	e.Rule(Opcode::Actor_PlayerCanSeeMe) = rFn1;
+
+	e.Rule(Opcode::Actor_AllActors) = rFn3;
+	e.Rule(Opcode::Actor_ChildActors) = rFn2;
+	e.Rule(Opcode::Actor_BasedActors) = rFn2;
+	e.Rule(Opcode::Actor_TouchingActors) = rFn2;
+	e.Rule(Opcode::Actor_TracedActors) = rFn7plus;
+	e.Rule(Opcode::Actor_VisibleActors) = rFn4;
+	e.Rule(Opcode::Actor_VisibleCollidingActors) = rFn7plus;
+	e.Rule(Opcode::Actor_DynamicActors) = rFn3;
+	e.Rule(Opcode::Actor_CollidingActors) = rFn7plus;
+
+	// Controller
+
+	e.Rule(Opcode::Controller_GetURLMap) = rFn0;
+	e.Rule(Opcode::Controller_FastTrace) = rFn4;
 
 	return e;
 }();

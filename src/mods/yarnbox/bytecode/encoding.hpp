@@ -11,17 +11,18 @@ namespace primitive {
 
 enum Type : uint8_t
 {
-	PUnsupported, // Not specified (has no data)
-	PEmpty,       // No operands (has no data)
-	PU8,          // u8 operand
-	PU16,         // u16 operand
-	PU32,         // u32 operand
-	PU64,         // u64 operand
-	PInsn,        // single instruction operand
-	PInsns,       // multi-instruction operand terminated by a sentinel - the argument
-	PDebugInfo,   // optional DebugInfo instruction
-	PAnsiString,  // NUL-terminated ANSI string
-	PSentinel,    // u8 value (has no data)
+	PUnsupported,   // Not specified (has no data)
+	PEmpty,         // No operands (has no data)
+	PU8,            // u8 operand
+	PU16,           // u16 operand
+	PU32,           // u32 operand
+	PU64,           // u64 operand
+	PInsn,          // single instruction operand
+	PInsns,         // multi-instruction operand terminated by a sentinel - the argument
+	PDebugInfo,     // optional DebugInfo instruction
+	PAnsiString,    // NUL-terminated ANSI string
+	PSentinel,      // u8 value (has no data)
+	PPrimitiveCast, // PrimitiveCast operand
 };
 
 /// Integer presentation used when dumping bytecode to the user.
@@ -121,10 +122,16 @@ struct Encoding
 {
 	Rule opcodes[opcodeCount];
 
-	constexpr Rule& Rule(Opcode opcode) { return opcodes[static_cast<size_t>(opcode)]; }
+	constexpr struct Rule& Rule(Opcode opcode) { return opcodes[static_cast<size_t>(opcode)]; }
 	constexpr const struct Rule& Rule(Opcode opcode) const
 	{
 		return opcodes[static_cast<size_t>(opcode)];
+	}
+
+	constexpr struct Rule& Rule(PrimitiveCast cast) { return Rule(PrimitiveCastToOpcode(cast)); }
+	constexpr const struct Rule& Rule(PrimitiveCast cast) const
+	{
+		return Rule(PrimitiveCastToOpcode(cast));
 	}
 };
 

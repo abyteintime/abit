@@ -50,7 +50,7 @@ opcode <- lowOpcode | highNative byte
 // `operands` is specified by the Operands column in the table below.
 insn <- opcode operands
 
-fnargs <- insn* opcode.EndFunctionParms DebugInfo?
+fnargs <- (!opcode.EndFunctionParams insn*) opcode.EndFunctionParms DebugInfo?
 ```
 Rules may capture variables which can be referred to in the description, with the syntax `variable@rule`.
 
@@ -80,7 +80,7 @@ Index | Name | Operands | Description
 11 | `Nothing` | - | Literally does nothing.
 12 | unknown | unknown | -
 13 | `GotoLabel` | `insn` | -
-14 | `EatReturnValue` | unknown | -
+14 | `EatReturnValue` | `obj expr@insn` | Discards the return value of `expr`. I'm not sure what the `obj` operand is for. If I had to guess, it's probably to invoke a destructor on non-trivial types like FString.
 15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears the Value Omitted flag and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
 16 | `DynArrayElement` | `index@insn array@insn` | Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
 17 | `New` | `outer@insn name@insn flags@insn class@insn template@insn` | Creates a new object with the given parameters. The types are `Object outer`, `String name`, `Int flags`, `Class class`, `Object template`.
@@ -116,8 +116,8 @@ Index | Name | Operands | Description
 47 | `Iterator` | `insn orel (!opcode.Continue insn)* opcode.Continue` | -
 48 | `IteratorPop` | - | -
 49 | `Continue` | N/A | Emitted at the end of `Iterator` bodies. Signals to the iterator that the body should be executed from the beginning.
-50 | `StructCmpEq` | unknown | -
-51 | `StructCmpNe` | unknown | -
+50 | `StructCmpEq` | `struct@obj a@insn b@insn` | Compares two structs of the type `struct` for equality `a == b`.
+51 | `StructCmpNe` | `struct@obj a@insn b@insn` | Compares two structs of the type `struct` for inequality `a != b`.
 52 | `UnicodeStringConst` | unknown | -
 53 | `StructMember` | `struct@obj field@obj u8 u8 insn` | -
 54 | `DynArrayLength` | `array@insn` | Expects that `array` loads an array property into `GProperty`, `GPropObject`, and `GPropAddr`, then reads the length of the array into the return value.
@@ -144,7 +144,7 @@ Index | Name | Operands | Description
 75 | `InstanceDelegate` | unknown | -
 76 .. 80 | - | Invalid opcodes.
 81 | `InterfaceContext` | `insn` | -
-82 | `InterfaceCast` | - | Casts the context object to an interface using [primitive cast](#primitive-casts) 70 `ObjectToInterface`.
+82 | `InterfaceCast` | `interface@insn` | Casts the context object to an interface using [primitive cast](#primitive-casts) 70 `ObjectToInterface`.
 83 | `EndOfScript` | - | Sentinel placed at the end of all chunks of bytecode.
 84 | `DynArrayAdd` | `array@insn num@insn DebugInfo?` | Adds `num` zero elements at the end of the `array`.
 85 | `DynArrayAddItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Append an `item` to the end of the `array`. If `array` doesn't produce a property (`GPropAddr` is null,) perform a jump by `jumpoffset` bytes. The sentinel past `item` is unused. This is quite a complex instruction, I'm not sure if I got it totally right.
@@ -183,10 +183,10 @@ Index | Name | Operands | Description
 122 | `EqualEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a == b`.
 123 | `NotEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a != b`.
 124 | `ComplementEqual_StrStr` | `a@insn b@insn u8 DebugInfo?` | Compares two strings `a == b`, but case-insensitively (this is the UnrealScript `a ~= b` operator.)
-125 | `Len` | unknown | -
-126 | `InStr` | unknown | -
-127 | `Mid` | unknown | -
-128 | `Left` | unknown | -
+125 | `Len` | `s@insn u8 DebugInfo?` | Returns the length of the string `s`.
+126 | `InStr` | `s@insn sub@insn u8 DebugInfo?` | Finds the substring `sub` in string `s` and returns its index, or -1 if it cannot be found.
+127 | `Mid` | `s@insn start@insn end@insn u8 DebugInfo?` | Returns the substring of `s` including characters in the range `min .. max`.
+128 | `Left` | `s@insn count@insn u8 DebugInfo?` | Returns the first `count` characters of the string.
 129 | `Not_PreBool` | `x@insn u8 DebugInfo?` | Boolean NOT; returns the inverse of `x`.
 130 | `AndAnd_BoolBool` | `x@insn u8 jump@orel y@insn u8` | Short-circuiting boolean AND. If `x` is `False`, it'll jump the IP `jump` bytes forward, so as short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
 131 | `XorXor_BoolBool` | unknown | Alias for `NotEqual_BoolBool`.
@@ -217,15 +217,15 @@ Index | Name | Operands | Description
 156 | `And_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise ANDs the two 32-bit integers `x` and `y`.
 157 | `Xor_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise XORs the two 32-bit integers `x` and `y`.
 158 | `Or_IntInt` | `x@insn y@insn u8 DebugInfo?` | Bitwise ORs the two 32-bit integers `x` and `y`.
-159 | `MultiplyEqual_IntFloat` | `x@insn y@insn u8 DebugInfo?` | -
-160 | `DivideEqual_IntFloat` | `x@insn y@insn u8 DebugInfo?` | -
+159 | `MultiplyEqual_IntFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies the integer stored in the variable `lvalue` by the float `rvalue` in place.
+160 | `DivideEqual_IntFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Divides the integer stored in the variable `lvalue` by the float `rvalue` in place.
 161 | `AddEqual_IntInt` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Increments the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue + rvalue` with no side effects.
 162 | `SubtractEqual_IntInt` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Decrements the 32-bit integer variable `lvalue` by `rvalue`. Returns the new value. If `lvalue` is not an lvalue, returns `lvalue - rvalue` with no side effects.
 163 | `AddAdd_PreInt` | `lvalue@insn u8 DebugInfo?` | Prefix increment operator for ints `++a`. Increments the variable `lvalue` by one. Returns the new value (after incrementing.)
 164 | `SubtractSubtract_PreInt` | `lvalue@insn u8 DebugInfo?` | Prefix decrement operator for ints `--a`. Increments the variable `lvalue` by one. Returns the new value (after decrementing.)
 165 | `AddAdd_Int` | `lvalue@insn u8 DebugInfo?` | Postfix increment operator for ints `a++`. Increments the variable `lvalue` by one. Returns the old value (before incrementing.)
 166 | `SubtractSubtract_Int` | `lvalue@insn u8 DebugInfo?` | Postfix decrement operator for ints `a--`. Increments the variable `lvalue` by one. Returns the old value (before decrementing.)
-167 | `Rand` | unknown | -
+167 | `Rand` | `max@insn u8 DebugInfo?` | Returns a random integer in the range `0 .. max - 1`.
 168 | `At_StrStr` | `a@insn b@insn u8 DebugInfo?` | Joins two strings together with a space inbetween.
 169 | `Subtract_PreFloat` | `x@insn u8 DebugInfo?` | Unary minus (negation) for floats `-x`.
 170 | `MultiplyMultiply_FloatFloat` | `x@insn n@insn u8 DebugInfo?` | Exponentiation operator `x ** y` (C math function `powf`.) Raises `x` to the `n`-th power.
@@ -256,10 +256,10 @@ Index | Name | Operands | Description
 195 | `FRand` | `u8 DebugInfo?` | Returns a random float between 0 and 1.
 196 | `GreaterGreaterGreater_IntInt` | `x@insn y@insn u8 DebugInfo?` | Right-shifts the unsigned 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >>> 32` is the same as `1 >>> 1`.
 197 | `IsA` | `classname@insn u8 DebugInfo?` | The `Object.IsA` function. Checks if the object is of a class with the given `classname` (`FName`), with respect to the inheritance hierarchy.
-198 | `MultiplyEqual_ByteFloat` | unknown | -
-199 | `Round` | unknown | -
+198 | `MultiplyEqual_ByteFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies a byte `lvalue` by a float `rvalue` in place.
+199 | `Round` | `x@insn` | Returns the float `x` rounded to the nearest integer.
 200 | - | - | Hole.
-201 | `Repl` | unknown | -
+201 | `Repl` | `s@insn from@insn to@insn casesensitive@insn u8 DebugInfo?` | Replaces `from` with `to` in the string `s`. If `casesensitive` is true, the search is case-sensitive.
 202 | - | - | Hole.
 203 | `NotEqual_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | Compares two rotators `x != y`.
 204 .. 209 | - | - | Hole.
@@ -287,49 +287,49 @@ Index | Name | Operands | Description
 231 | `LogInternal` | unknown | -
 232 | `WarnInternal` | unknown | -
 233 | - | - | Hole.
-234 | `Right` | unknown | -
-235 | `Caps` | unknown | -
-236 | `Chr` | unknown | -
-237 | `Asc` | unknown | -
-238 | `Locs` | unknown | -
+234 | `Right` | `s@insn count@insn u8 DebugInfo?` | Returns `count` last characters of the string `s`.
+235 | `Caps` | `s@insn u8 DebugInfo?` | Returns a new string which is `s` but with all letters uppercased.
+236 | `Chr` | `i@insn u8 DebugInfo?` | Returns a string containing the ASCII character with code `i`.
+237 | `Asc` | `s@insn u8 DebugInfo?` | Returns the ASCII code for the first character of `s`.
+238 | `Locs` | `s@insn u8 DebugInfo?` | Returns a new string which is `s` but with all letters lowercased.
 239 .. 241 | - | - | Hole.
 242 | `EqualEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x == y`. The return value is widened to a `uint32_t`.
 243 | `NotEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x != y`. The return value is widened to a `uint32_t`.
 244 | `FMin` | `x@insn y@insn u8 DebugInfo?` | Returns the smaller of the two float values `x` and `y`.
 245 | `FMax` | `x@insn y@insn u8 DebugInfo?` | Returns the larger of the two float values `x` and `y`.
-246 | `FClamp` | `x@insn min@insn max@insn u8 DebugInfo?` | Returns the number `x` clamped to fit between the interval `min .. max`. This is the same as `FMax(FMin(x, max), min)`.
+246 | `FClamp` | `x@insn min@insn max@insn u8 DebugInfo?` | Returns the float `x` clamped to fit between the interval `min .. max`. This is the same as `FMax(FMin(x, max), min)`.
 247 | `Lerp` | `a@insn b@insn t@insn` | Linearly interpolates between `a` and `b` using the factor `t`. This is the same as `a + t * (b - a)`.
 248 | - | - | Hole.
-249 | `Min` | unknown | -
-250 | `Max` | unknown | -
-251 | `Clamp` | unknown | -
-252 | `VRand` | unknown | -
+249 | `Min` | `x@insn y@insn u8 DebugInfo?` | Returns the smaller of the two integer values `x` and `y`.
+250 | `Max` | `x@insn y@insn u8 DebugInfo?` | Returns the larger of the two integer values `x` and `y`.
+251 | `Clamp` | `x@insn min@insn max@insn u8 DebugInfo?` | Returns the integer `x` clamped to fit between the interval `min .. max`. This is the same as `Max(Min(x, max), min)`.
+252 | `VRand` | `u8 DebugInfo?` | Returns a "uniformy distributed random vector." \[[source](https://docs.unrealengine.com/udk/Three/UnrealScriptFunctions.html#Vector%20functions)]
 253 | `Percent_IntInt` | `x@insn y@insn u8 DebugInfo?` | Returns the remainder of dividing `x` by `y` (this is not the same as modulo.) If `y` is zero, logs an error and the result is zero. The log message calls this operation modulo even though it's not.
 254 | `EqualEqual_NameName` | `x@insn y@insn u8 DebugInfo?` | Compares two `FName`s `x == y`. Effectively an alias for `EqualEqual_ObjectObject`, since `FName` and `UObject*` have the same size, so the compiler optimizes this away to share the same function.
 255 | `NotEqual_NameName` | `x@insn y@insn u8 DebugInfo?` | Compares two `FName`s `x != y`. Effectively an alias for `NotEqual_ObjectObject`, since `FName` and `UObject*` have the same size, so the compiler optimizes this away to share the same function.
-256 | `Actor.Sleep` | unknown | -
+256 | `Actor.Sleep` | `fnargs` | -
 257 | - | - | Hole.
 258 | `ClassIsChildOf` | `class@insn base@insn u8 DebugInfo?` | Returns whether the given `class` extends the class `base` by walking its inheritance hierarchy.
 259 .. 260 | - | - | Hole.
-261 | `Actor.FinishAnim` | unknown | -
-262 | `Actor.SetCollision` | unknown | -
+261 | `Actor.FinishAnim` | `fnargs` | -
+262 | `Actor.SetCollision` | `fnargs` | -
 263 .. 265 | - | - | Hole.
-266 | `Actor.Move` | unknown | -
-267 | `Actor.SetLocation` | unknown | -
+266 | `Actor.Move` | `fnargs` | -
+267 | `Actor.SetLocation` | `fnargs` | -
 268 .. 269 | - | - | Hole.
 270 | `Add_QuatQuat` | unknown | -
 271 | `Subtract_QuatQuat` | unknown | -
-272 | `Actor.SetOwner` | unknown | -
+272 | `Actor.SetOwner` | `fnargs` | -
 273 .. 274 | - | - | Hole.
 275 | `LessLess_VectorRotator` | `x@insn y@insn u8 DebugInfo?` | -
 276 | `GreaterGreater_VectorRotator` | `x@insn y@insn u8 DebugInfo?` | -
-277 | `Actor.Trace` | unknown | -
+277 | `Actor.Trace` | `fnargs` | -
 278 | - | - | Hole.
-279 | `Actor.Destroy` | unknown | -
-280 | `Actor.SetTimer` | unknown | -
+279 | `Actor.Destroy` | `fnargs` | -
+280 | `Actor.SetTimer` | `fnargs` | -
 281 | `IsInState` | unknown | -
 282 | - | - | Hole.
-283 | `Actor.SetCollisionSize` | unknown | -
+283 | `Actor.SetCollisionSize` | `fnargs` | -
 284 | `GetStateName` | unknown | -
 285 .. 286 | - | - | Hole.
 287 | `Multiply_RotatorFloat` | `x@insn y@insn u8 DebugInfo?` | -
@@ -340,33 +340,33 @@ Index | Name | Operands | Description
 292 .. 295 | - | - | Hole.
 296 | `Multiply_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Multiplies two vectors together component-wise.
 297 | `MultiplyEqual_VectorVector` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies the vector stored in the variable `lvalue` by the vector `rvalue` in place.
-298 | `Actor.SetBase` | unknown | -
-299 | `Actor.SetRotation` | unknown | -
+298 | `Actor.SetBase` | `fnargs` | -
+299 | `Actor.SetRotation` | `fnargs` | -
 300 | `MirrorVectorByNormal` | unknown | -
 301 .. 303 | - | - | Hole.
-304 | `Actor.AllActors` | unknown | -
-305 | `Actor.ChildActors` | unknown | -
-306 | `Actor.BasedActors` | unknown | -
-307 | `Actor.TouchingActors` | unknown | -
+304 | `Actor.AllActors` | `fnargs` | -
+305 | `Actor.ChildActors` | `fnargs` | -
+306 | `Actor.BasedActors` | `fnargs` | -
+307 | `Actor.TouchingActors` | `fnargs` | -
 308 | - | - | Hole.
-309 | `Actor.TracedActors` | unknown | -
+309 | `Actor.TracedActors` | `fnargs` | -
 310 | - | - | Hole.
-311 | `Actor.VisibleActors` | unknown | -
-312 | `Actor.VisibleCollidingActors` | unknown | -
-313 | `Actor.DynamicActors` | unknown | -
+311 | `Actor.VisibleActors` | `fnargs` | -
+312 | `Actor.VisibleCollidingActors` | `fnargs` | -
+313 | `Actor.DynamicActors` | `fnargs` | -
 314 .. 315 | - | - | Hole.
 316 | `Add_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | -
 317 | `Subtract_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | -
 318 | `AddEqual_RotatorRotator` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
 319 | `SubtractEqual_RotatorRotator` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
 320 | `RotRand` | unknown | -
-321 | `Actor.CollidingActors` | unknown | -
+321 | `Actor.CollidingActors` | `fnargs` | -
 322 | `ConcatEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Concatenates a string `rvalue` onto another string `lvalue` in place.
 323 | `AtEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Joins a string `rvalue` onto another string `lvalue` in place, adding a space inbetween.
 324 | `SubtractEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Removes all occurrences of a string `rvalue` from another string `lvalue` in place.
 325 .. 383 | - | - | Hole.
-384 | `Actor.PollSleep` | unknown | -
-385 | `Actor.PollFinishAnim` | unknown | -
+384 | `Actor.PollSleep` | `fnargs` | -
+385 | `Actor.PollFinishAnim` | `fnargs` | -
 386 .. 499 | - | - | Hole.
 500 | `Controller.MoveTo` | unknown | -
 501 | `Controller.Unknown1_?` | - | There is a function pointer there but the debug symbol does not directly point to a function.
@@ -376,7 +376,7 @@ Index | Name | Operands | Description
 508 | `Controller.FinishRotation` | unknown | -
 509 | `Controller.PollFinishRotation` | unknown | -
 510 .. 511 | - | - | Hole.
-512 | `Actor.MakeNoise` | unknown | -
+512 | `Actor.MakeNoise` | `fnargs` | -
 513 | - | - | Hole.
 514 | `Controller.LineOfSightTo` | unknown | -
 515 .. 516 | - | - | Hole.
@@ -393,7 +393,7 @@ Index | Name | Operands | Description
 528 | `Controller.PollWaitForLanding` | unknown | -
 529 .. 530 | - | - | Hole.
 531 | `Controller.PickTarget` | unknown | -
-532 | `Actor.PlayerCanSeeMe` | unknown | -
+532 | `Actor.PlayerCanSeeMe` | `fnargs` | -
 533 | `Controller.CanSee` | unknown | -
 534 .. 535 | - | - | Hole.
 536 | `SaveConfig` | unknown | -
@@ -404,7 +404,7 @@ Index | Name | Operands | Description
 548 | `Controller.FastTrace` | unknown | -
 549 .. 1499 | - | - | Hole.
 1500 | `ProjectOnTo` | unknown | -
-1501 | `IsZero` | unknown | -
+1501 | `IsZero` | `vec@insn u8 DebugInfo?` | Returns whether a vector is exactly equal to `vect(0, 0, 0)`.
 1502 .. 3968 | - | - | Hole.
 3969 | `Actor.MoveSmooth` | unknown | -
 3970 | `Actor.SetPhysics` | unknown | -
@@ -423,6 +423,9 @@ Index | Name | Operands | Description
 - `Iterator` is really weird: `UObject::execIterator` is, as far as I can tell, an empty function,
   which makes zero sense, since `UStruct::SerializeExpr` does some stuff to read an instruction and
   a 16-byte value. But the opcode clearly _does work_, the question is _how????_
+- Opcodes defined on `Actor` and other non-`Object` classes are not described and will not be
+  described; please refer to the documentation comments in Actor.uc (if they exist for your
+  particular function, ha ha ha!)
 
 ### Function parameters
 
@@ -467,6 +470,7 @@ Yarnbox reserves the following otherwise free opcodes for implementing its funct
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
+4039 +  | Primitive casts | N/A | To reuse
 4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
 4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded.
 

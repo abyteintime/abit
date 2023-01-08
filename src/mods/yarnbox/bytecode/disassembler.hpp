@@ -43,6 +43,8 @@ struct Disassembler
 	bool ShouldStopDisassembling() { return outTree->IsBytecodeBogusAt(ip); }
 
 private:
+	BytecodeTree::NodeIndex DisassembleOpcode(size_t ipAtStart, Opcode opcode);
+
 	inline uint8_t CurrentByte() const { return AtEnd() ? 0 : bytecode[ip]; }
 	inline void Advance(size_t by = 1) { ip += by; }
 

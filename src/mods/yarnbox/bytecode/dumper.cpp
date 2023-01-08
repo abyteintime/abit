@@ -148,6 +148,7 @@ DumpPrimRec(
 			break;
 
 		case PInsn:
+		case PPrimitiveCast:
 			DumpNodeRec(tree, value, level, outString);
 			break;
 
