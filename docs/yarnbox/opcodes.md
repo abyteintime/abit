@@ -70,7 +70,7 @@ Index | Name | Operands | Description
 1 | `InstanceVariable` | `property@obj` | Loads `property` (`UProperty*`) into GProperty; then reads an instance variable on the object into the return value address.
 2 | `DefaultVariable` | `property@obj` | Similar to InstanceVariable but reads from the class default object.
 3 | `StateVariable` | `property@obj` | -
-4 | `Return_?` | `value@insn` | So common that it's probably the return opcode. Looking at some functions' source code it would seem like the return opcode indeed; however I haven't found its handling code yet. Since it terminates the execution of a function it cannot be an `exec`.
+4 | `Return` | `value@insn` | So common that it's probably the return opcode. Looking at some functions' source code it would seem like the return opcode indeed; however I haven't found its handling code yet. Since it terminates the execution of a function it cannot be an `exec`.
 5 | `Switch` | unknown | Switch on a couple values. Not sure how this works quite yet.
 6 | `Jump` | `offset@oabs` | Unconditional jump to 16-bit absolute `offset` inside the current chunk of bytecode.
 7 | `JumpIfNot` | `offset@oabs cond@insn` | Conditional jump to 16-bit absolute `offset`. Jumps if `cond` returns zero.
