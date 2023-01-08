@@ -56,8 +56,10 @@ DumpPrimRec(
 		case PU8:
 		case PU16:
 		case PU32:
-		case PU64:
+		case PU64: {
 			AddIndent(level, outString);
+
+			bool isBytecodeBogus = tree.IsBytecodeBogusAt(ip);
 			switch (static_cast<IntKind>(prim.arg)) {
 				case KUnsigned:
 					fmt::format_to(out, "i {}\n", value);
@@ -90,7 +92,6 @@ DumpPrimRec(
 					break;
 
 				case KObject: {
-					bool isBytecodeBogus = tree.IsBytecodeBogusAt(ip);
 					// This is a giant hack which exploits the fact that valid pointers on x86
 					// usually start with the bits 00007F due to how the x86 virtual address space
 					// is laid out:
@@ -107,7 +108,9 @@ DumpPrimRec(
 					// a bit hacky. I mean, the Boehm GC has to be able to find pointers somehow
 					// too, right?
 					bool isPointerBogus = (0xFFFFFF00'00000000 & value) != 0x00007F00'00000000;
-					if (!isBytecodeBogus && !isPointerBogus) {
+					if (value == 0) {
+						outString += "i(obj) None\n";
+					} else if (!isBytecodeBogus && !isPointerBogus) {
 						const UObject* object = reinterpret_cast<UObject*>(value);
 						fmt::format_to(out, "i(obj) {:ip}\n", UObjectFmt{ object });
 					} else {
@@ -117,11 +120,27 @@ DumpPrimRec(
 					break;
 				}
 
-				case KOffset:
-					fmt::format_to(out, "i(offset) {:#x}\n", static_cast<int16_t>(value));
+				case KOffsetAbs:
+					fmt::format_to(out, "i(oabs) {:#x}\n", static_cast<uint16_t>(value));
 					break;
+				case KOffsetRel:
+					fmt::format_to(out, "i(orel) {:#x}\n", static_cast<int16_t>(value));
+					break;
+
+				case KName: {
+					FName name = abit::BitCast<FName>(value);
+					if (!isBytecodeBogus && name.IsValid()) {
+						FString nameFString = name.ToString();
+						fmt::format_to(out, "i(name) '{}'\n", nameFString.ToString());
+					} else {
+						fmt::format_to(
+							out, "i(name) <invalid {}_{}>\n", name.nameIndex, name.instanceIndex
+						);
+					}
+				} break;
 			}
 			break;
+		}
 
 		case PAnsiString:
 			AddIndent(level, outString);

@@ -33,7 +33,9 @@ enum IntKind : uint8_t
 	KFloat,        // Floating-point
 	KPointer,      // Pointer
 	KObject,       // UObject pointer
-	KOffset,       // IP offset: signed, printed as hex
+	KOffsetAbs,    // Absolute IP offset
+	KOffsetRel,    // Relative IP offset
+	KName,         // FName
 };
 
 bool
@@ -81,7 +83,9 @@ constexpr Primitive PS64 = { PU64, KSigned };
 constexpr Primitive PFloat = { PU32, KFloat };
 constexpr Primitive PPtr = { PU64, KPointer };
 constexpr Primitive PObj = { PU64, KObject };
-constexpr Primitive POffset = { PU16, KOffset };
+constexpr Primitive PName = { PU64, KName };
+constexpr Primitive POAbs = { PU16, KOffsetAbs };
+constexpr Primitive PORel = { PU16, KOffsetRel };
 
 }
 

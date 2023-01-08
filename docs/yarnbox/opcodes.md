@@ -2,7 +2,7 @@
 
 The columns are:
 - **Index** - index in the `GNatives` array.
-- **Name** - name of the `exec` function corresponding to the opcode, suffixed with `_?` if the exact name is not (yet) known.
+- **Name** - name of the `exec` function corresponding to the opcode, suffixed with `_?` if the exact name is not known.
   - The name can be namespaced, like `Actor.MoveTo`, if the `exec` function lives inside a class
     that's not `UObject` (such as `AActor`.)
 - **Description** - informal description of the opcode's behavior.
@@ -36,9 +36,12 @@ u16 <- byte byte
 u32 <- byte byte byte byte
 u64 <- byte byte byte byte byte byte byte byte
 
-// These rule serve maily for metadata reasons.
-ptr <- u64
-obj <- ptr
+// These rules are there for metadata reasons.
+orel <- u16   // relative offset
+oabs <- u16   // absolute offset
+ptr <- u64    // any pointer
+obj <- ptr    // UObject*
+name <- u64   // FName
 
 lowOpcode <- {0 .. 95, 112 .. 255}
 highNative <- {96 .. 111}
@@ -53,7 +56,7 @@ Rules may capture variables which can be referred to in the description, with th
 
 # Disclaimer
 
-The following table may be incomplete. Actual bytecode may contain instructions that are not (yet)
+The following table may be incooabsmplete. Actual bytecode may contain instructions that are not (yet)
 in this table; ie. instructions that are registered dynamically and do not appear in Ghidra.
 
 As mentioned before, the actual names of certain dynamically registered instructions may be my best
@@ -69,8 +72,8 @@ Index | Name | Operands | Description
 3 | `StateVariable` | `property@obj` | -
 4 | `Return_?` | `value@insn` | So common that it's probably the return opcode. Looking at some functions' source code it would seem like the return opcode indeed; however I haven't found its handling code yet. Since it terminates the execution of a function it cannot be an `exec`.
 5 | `Switch` | unknown | Switch on a couple values. Not sure how this works quite yet.
-6 | `Jump` | `offset@u16` | Unconditional jump by 16-bit relative `offset` inside the current chunk of bytecode.
-7 | `JumpIfNot` | `offset@u16 cond@insn` | Conditional jump by 16-bit `offset`. Jumps if `cond` returns zero.
+6 | `Jump` | `offset@oabs` | Unconditional jump to 16-bit absolute `offset` inside the current chunk of bytecode.
+7 | `JumpIfNot` | `offset@oabs cond@insn` | Conditional jump to 16-bit absolute `offset`. Jumps if `cond` returns zero.
 8 | `Stop` | - | Sets the instruction pointer to the null pointer, which causes a crash.
 9 | `Assert` | `line@u16 category@u8 cond@insn` | Logs an error message if `cond` is evaluated to zero. The error message is `Assertion failed, line %i` with the format operand being `line`. `category` can be 0 to change the log category to `0x2f9` instead of `0x301`; I haven't discovered what all these categories are called yet.
 10 | `Case` | unknown | Probably something to do with `Switch`, but I haven't reversed this yet.
@@ -79,24 +82,24 @@ Index | Name | Operands | Description
 13 | `GotoLabel` | `insn` | -
 14 | `EatReturnValue` | unknown | -
 15 | `Let` | `lvalue@insn rvalue@insn` | Evaluates `lvalue`, which should be an instruction that sets `GProperty`, `GPropObject`, and `GPropAddr` (such as one of the `*Variable` instructions.) If `GRuntimeUCFlags & 1` is set, evaluates `rvalue` passing `GPropAddr` directly as the return value. Otherwise it clears the Value Omitted flag and modifies an array's length to `rvalue`. (the `lvalue` is expected to reveal an array property.)
-16 | `DynArrayElement` | `index@insn array@insn` | Not sure about the order of arguments. Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
+16 | `DynArrayElement` | `index@insn array@insn` | Loads an `array` property into `GProperty` and `GPropObject`, and sets `GPropAddr` to the array's base address offset by the given index. If the return value pointer is not null, reads the value from the array into the return value pointer.
 17 | `New` | `outer@insn name@insn flags@insn class@insn template@insn` | Creates a new object with the given parameters. The types are `Object outer`, `String name`, `Int flags`, `Class class`, `Object template`.
-18 | `ClassContext` | `this@insn jump@u16 property@obj type@u8 then@insn` | Similar to `Context` (25), but `this` is expected to be a class, and `then` is executed on the class default object instead of `this`.
-19 | `MetaCast` | `targetclass@u64 fromclass@insn` | Performs a check that the class `fromclass` is or extends `targetclass`. If so, the class is the value returned. Otherwise returns `None`.
+18 | `ClassContext` | `this@insn jump@orel property@obj type@u8 then@insn` | Similar to `Context` (25), but `this` is expected to be a class, and `then` is executed on the class default object instead of `this`.
+19 | `MetaCast` | `targetclass@obj fromclass@insn` | Performs a check that the class `fromclass` is or extends `targetclass`. If so, the class is the value returned. Otherwise returns `None`.
 20 | `LetBool` | `lvalue@insn rvalue@insn` | Similar to `Let` but specifically for boolean and boolean array properties. Unlike `Let` it does not seem to have any special support for arrays, as far as I can tell it'll always write to the first element. Just like `BoolVariable` it coerces the written value to either 1 or 0 and ANDs the result with the `bBoolValueEnabled` thingamajig.
 21 | `EndDefaultParm` | - | Sentinel value for a `DefaultParmValue` instruction.
-22 | `EndFunctionParms` | - | Sentinel value for function arguments. Unlike the name suggests, it is actually for function arguments (values passed to the function by the caller) and not parameters (the variables inside the function that contain these values.) If reached, makes the instruction pointer go back by 1, probably to let an instruction dispatcher in a function call consume this value.
+22 | `EndFunctionParms` | N/A | Sentinel value for function arguments. Unlike the name suggests, it is actually for function arguments (values passed to the function by the caller) and not parameters (the variables inside the function that contain these values.) If reached, makes the instruction pointer go back by 1, probably to let an instruction dispatcher in a function call consume this value.
 23 | `Self` | - | Sets the return value to `this`.
 24 | unknown | unknown | -
-25 | `Context` | `this@insn jump@u16 property@obj type@u8 then@insn` | When successful, executes the expression `then` on the object `this`. When `this` is null however, reads `property` and `type` to figure out the return value's size and zero it out; `type` is used if `property` is null. Then jumps over `then`.
-26 | `ArrayElement` | `array@insn index@insn` | -
-27 | `VirtualFunction` | `name@u64 fnargs` | Calls a function by its `name` (`FName`), indirectly.
+25 | `Context` | `this@insn jump@orel property@obj type@u8 then@insn` | When successful, executes the expression `then` on the object `this`. When `this` is null however, reads `property` and `type` to figure out the return value's size and zero it out; `type` is used if `property` is null. Then jumps over `then`.
+26 | `ArrayElement` | `index@insn array@insn` | Similar to `DynArrayElement`, but works on statically-sized arrays.
+27 | `VirtualFunction` | `name@name fnargs` | Calls a function by its `name` (`FName`), indirectly.
 28 | `FinalFunction` | `function@obj fnargs` | Calls a `function` (`UFunction*`) directly.
 29 | `IntConst` | `x@u32` | Writes a `uint32_t` to the return value. The endianness is platform-specific.
 30 | `FloatConst` | `x@u32` | Writes a `float` to the return value. The endianness is platform-specific.
 31 | `StringConst` | `string@({1 .. 255}* 0)` | Writes a string constant to the return value (assumed to be an `FString`.)
 32 | `ObjectConst` | `object@obj` | Writes a `UObject*` to the return value.
-33 | `NameConst` | `name@u64` | Writes a constant `FName` to the return value. Note that `FName` is a trivial 8 byte-long type.
+33 | `NameConst` | `name@name` | Writes a constant `FName` to the return value. Note that `FName` is a trivial 8 byte-long type.
 34 | `RotationConst` | `pitch@u32 yaw@u32 roll@u32` | Writes a constant `FRotator` to the return value.
 35 | `VectorConst` | `x@u32 y@u32 z@u32` | Writes a constant `FVector` to the return value.
 36 | `ByteConst` | `x@byte` | Writes a constant `uint8_t` to the return value.
@@ -107,36 +110,36 @@ Index | Name | Operands | Description
 41 | `NativeParm` | `param@obj` | Loads a native parameter into `GPropAddr` and does *something*. I haven't discovered what yet. Either way, it's generated as part of `native` functions.
 42 | `NoObject` | - | Returns `None`.
 43 | - | - | Invalid opcode.
-44 | `IntConstByte` | unknown | -
+44 | `IntConstByte` | `x@u8` | Writes a constant `int` to the return value. This is used for small integers whose value does not exceed 255.
 45 | `BoolVariable` | `lvalue@insn` | -
 46 | `DynamicCast` | `class@u64 object@insn` | Attempts to cast an `object` into the target `class` (which can also be an interface.) If the cast fails - that is, the object is not of the given class or does not implement the given interface, returns null. Otherwise returns the casted object.
-47 | `Iterator` | - | Does not do anything.
+47 | `Iterator` | `insn orel (!opcode.Continue insn)* opcode.Continue` | -
 48 | `IteratorPop` | - | -
-49 | unknown | - | Unknown single-byte opcode.
+49 | `Continue` | N/A | Emitted at the end of `Iterator` bodies. Signals to the iterator that the body should be executed from the beginning.
 50 | `StructCmpEq` | unknown | -
 51 | `StructCmpNe` | unknown | -
 52 | `UnicodeStringConst` | unknown | -
 53 | `StructMember` | `struct@obj field@obj u8 u8 insn` | -
 54 | `DynArrayLength` | `array@insn` | Expects that `array` loads an array property into `GProperty`, `GPropObject`, and `GPropAddr`, then reads the length of the array into the return value.
-55 | `GlobalFunction` | `name@u64 fnargs` | Calls a global function by name.
+55 | `GlobalFunction` | `name@name fnargs` | Calls a global function by name.
 56 | `PrimitiveCast` | `type@u8 value@insn` | Performs a primitive cast of the given `type` on the provided `value`. See [primitive casts](#primitive-casts) for a list of available cast types. The function which performs the cast is obtained from the global array `GCasts`. Note that although I'm listing all casts as having the same `value@insn` operand, it would be possible for them to differ per cast type, as the operand is read by the primitive cast's `exec` function rather than `execPrimitiveCast` itself.
 57 | `DynArrayInsert` | `array@insn index@insn num@insn DebugInfo?` | Inserts `num` zero elements at `index` inside the given `array`.
 58 | `ReturnNothing` | `retval@obj` | Emits a warning that a non-void function reached its `EndOfScript` without hitting a `return` instruction. `retval` is a pointer to the `ReturnValue` property for this function, and is used to zero out the return value.
-59 | `EqualEqual_DelegateDelegate` | unknown | -
-60 | `NotEqual_DelegateDelegate` | unknown | -
-61 | `EqualEqual_DelegateFunction` | unknown | -
-62 | `NotEqual_DelegateFunction` | unknown | -
-63 | `EmptyDelegate` | - | -
+59 | `EqualEqual_DelegateDelegate` | `a@insn b@insn u8 DebugInfo?` | Compares two delegates `a == b`.
+60 | `NotEqual_DelegateDelegate` | `a@insn b@insn u8 DebugInfo?` | Compares two delegates `a != b`.
+61 | `EqualEqual_DelegateFunction` | `a@insn b@insn u8 DebugInfo?` | Alias for `EqualEqual_DelegateDelegate`.
+62 | `NotEqual_DelegateFunction` | `a@insn b@insn u8 DebugInfo?` | Alias for `NotEqual_DelegateDelegate`.
+63 | `EmptyDelegate` | - | Returns a delegate that does nothing.
 64 | `DynArrayRemove` | `array@insn index@insn num@insn DebugInfo?` | Removes `num` elements at `index` from the given `array`.
 65 | `DebugInfo` | unknown | -
-66 | `DelegateFunction` | unknown | -
-67 | `DelegateProperty` | unknown | -
+66 | `DelegateFunction` | `u8 obj name fnargs` | Probably some sort of delegate function call; I don't know exactly how this works.
+67 | `DelegateProperty` | `name@name property@obj` | Looks up a delegate by name. This is used when passing delegates as arguments to functions. Sometimes `property` is non-null, however I haven't figured out what it does yet.
 68 | `LetDelegate` | `lvalue@insn rvalue@insn` | -
-69 | `Conditional` | `cond@insn overt@u16 true@insn overf@u16 false@insn` | Evaluates `cond` to determine which instruction to execute. If `cond` is false, jumps `overt + 4` bytes forward to land directly on the `false` instruction and execute it. If `cond` is true, does not perform the jump, but rather executes `true` directly and takes a jump `overf + 2` bytes forward.
-70 | `DynArrayFind` | unknown | -
-71 | `DynArrayFindStruct` | unknown | -
+69 | `Conditional` | `cond@insn overt@orel true@insn overf@orel false@insn` | Evaluates `cond` to determine which instruction to execute. If `cond` is false, jumps `overt + 4` bytes forward to land directly on the `false` instruction and execute it. If `cond` is true, does not perform the jump, but rather executes `true` directly and takes a jump `overf + 2` bytes forward.
+70 | `DynArrayFind` | `array@insn jump@orel value@insn u8 DebugInfo?` | Finds a `value` inside of an `array`. If `array` is null, the `value` is not evaluated (it's jumped over using the `jump` offset.)
+71 | `DynArrayFindStruct` | `array@insn jump@orel name@insn value@insn u8 DebugInfo?` | Finds a struct whose field named `name` is equal to `value` inside an `array` of structs. If `array` is null, the `name` and `value` are not evaluated (they're jumped over using the `jump` offset.)
 72 | `LocalOutVariable` | `property@obj` | Similar to `LocalVariable`, but does some stuff specifically to support passing variables via parameters. Not entirely sure what, though.
-73 | `DefaultParmValue` | `jump@u16 default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If the Value Omitted flag is not set (an argument to the function is provided,) the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
+73 | `DefaultParmValue` | `jump@orel default@(!EndDefaultParm insn)+ EndDefaultParm` | Used for evaluating `optional` parameters. If the Value Omitted flag is not set (an argument to the function is provided,) the instruction pointer will be offset by `jump`. Otherwise all instructions matched by `default` will be executed. Unsets the flag after it's done executing, regardless if the default value was evaluated or not.
 74 | `EmptyParmValue` | - | Sets the Value Omitted flag, and nulls out `GPropObject`, `GPropAddress`, and `GProperty`.
 75 | `InstanceDelegate` | unknown | -
 76 .. 80 | - | Invalid opcodes.
@@ -144,12 +147,12 @@ Index | Name | Operands | Description
 82 | `InterfaceCast` | - | Casts the context object to an interface using [primitive cast](#primitive-casts) 70 `ObjectToInterface`.
 83 | `EndOfScript` | - | Sentinel placed at the end of all chunks of bytecode.
 84 | `DynArrayAdd` | `array@insn num@insn DebugInfo?` | Adds `num` zero elements at the end of the `array`.
-85 | `DynArrayAddItem` | `array@insn jumpoffset@u16 item@insn u8 DebugInfo?` | Append an `item` to the end of the `array`. If `array` doesn't produce a property (`GPropAddr` is null,) perform a jump by `jumpoffset` bytes. The sentinel past `item` is unused. This is quite a complex instruction, I'm not sure if I got it totally right.
-86 | `DynArrayRemoveItem` | `array@insn jumpoffset@u16 item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
-87 | `DynArrayInsertItem` | `array@insn jumpoffset@u16 index@insn item@insn u8 DebugInfo?` | Like `DynArrayAddItem`, but for inserting at a given index.
-88 | `DynArrayIterator` | unknown | The encoding of this is _wild._
+85 | `DynArrayAddItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Append an `item` to the end of the `array`. If `array` doesn't produce a property (`GPropAddr` is null,) perform a jump by `jumpoffset` bytes. The sentinel past `item` is unused. This is quite a complex instruction, I'm not sure if I got it totally right.
+86 | `DynArrayRemoveItem` | `array@insn jumpoffset@orel item@insn u8 DebugInfo?` | Encoded exactly like `DynArrayAddItem`, except removes an item. I don't know how the removal mechanism works.
+87 | `DynArrayInsertItem` | `array@insn jumpoffset@orel index@insn item@insn u8 DebugInfo?` | Like `DynArrayAddItem`, but for inserting at a given index.
+88 | `DynArrayIterator` | `array@insn outelement@insn outindex@insn u8 jump@orel (!opcode.Continue insn)* opcode.Continue` | Iterates over all elements inside a dynamic array `array`. `outelement` is the location in which to store the current element, `outindex` is the location in which to store the current index. The latter is optional and `EmptyParmValue` can be used to not store the index. Followed by that is the length(?) of the iterator body, so that the iterator knows how many bytes to jump over when the iteration is that. After that there's the body itself, which is what the iterator is going to execute every iteration.
 89 | `DynArraySort` | unknown | Even worse for this.
-90 | `JumpIfNotEditorOnly` | `u16` | Does nothing, since this is a game build.
+90 | `JumpIfNotEditorOnly` | `oabs` | Does nothing, since this is a game build.
 91 .. 95 | - | - | Hole.
 96 | `HighNative0` | `n@byte` | `HighNative` instructions execute opcodes whose indices are above 255. This one's redundant to just running the low opcode `n`.
 97 | `HighNative1` | `n@byte` | This one executes opcode `256 + n`.
@@ -185,19 +188,19 @@ Index | Name | Operands | Description
 127 | `Mid` | unknown | -
 128 | `Left` | unknown | -
 129 | `Not_PreBool` | `x@insn u8 DebugInfo?` | Boolean NOT; returns the inverse of `x`.
-130 | `AndAnd_BoolBool` | `x@insn u8 jump@u16 y@insn u8` | Short-circuiting boolean AND. If `x` is `False`, it'll jump the IP `jump` bytes forward, so as short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
+130 | `AndAnd_BoolBool` | `x@insn u8 jump@orel y@insn u8` | Short-circuiting boolean AND. If `x` is `False`, it'll jump the IP `jump` bytes forward, so as short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
 131 | `XorXor_BoolBool` | unknown | Alias for `NotEqual_BoolBool`.
-132 | `OrOr_BoolBool` | `x@insn u8 jump@u16 y@insn u8` | Short-circuiting boolean OR. If `x` is `True`, it'll jump the IP `jump` bytes forward, so as to short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
-133 | `MultiplyEqual_ByteByte` | unknown | -
-134 | `DivideEqual_ByteByte` | unknown | -
-135 | `AddEqual_ByteByte` | unknown | -
-136 | `SubtractEqual_ByteByte` | unknown | -
-137 | `AddAdd_PreByte` | unknown | -
-138 | `SubtractSubtract_PreByte` | unknown | -
-139 | `AddAdd_Byte` | unknown | -
-140 | `SubtractSubtract_Byte` | unknown | -
+132 | `OrOr_BoolBool` | `x@insn u8 jump@orel y@insn u8` | Short-circuiting boolean OR. If `x` is `True`, it'll jump the IP `jump` bytes forward, so as to short-circuit over `y`. Otherwise it'll evaluate `y`. The `u8` sentinels are not used in any way; they can be any byte.
+133 | `MultiplyEqual_ByteByte` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies byte variable `lvalue` by `rvalue` in place.
+134 | `DivideEqual_ByteByte` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Divides byte variable `lvalue` by `rvalue` in place.
+135 | `AddEqual_ByteByte` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Adds byte `rvalue` to byte variable `lvalue` in place.
+136 | `SubtractEqual_ByteByte` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Subtracts byte `rvalue` from byte variable `lvalue` in place.
+137 | `AddAdd_PreByte` | `lvalue@insn` | Increments a byte variable in place. Returns the new value of the variable (after it was incremented.)
+138 | `SubtractSubtract_PreByte` | `lvalue@insn` | Decrements a byte variable in place. Returns the new value of the variable (after it was decremented.)
+139 | `AddAdd_Byte` | `lvalue@insn` | Increments a byte variable in place. Returns the old value of the variable (before it was incremented.)
+140 | `SubtractSubtract_Byte` | `lvalue@insn` | Decrements a byte variable in place. Returns the old value of the variable (before it was decremented.)
 141 | `Complement_PreInt` | `x@insn u8 DebugInfo?` | Bitwise NOTs the 32-bit integer `x`.
-142 | `EqualEqual_RotatorRotator` | unknown | -
+142 | `EqualEqual_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | Compares two rotators `x == y`.
 143 | `Subtract_PreInt` | `x@insn u8 DebugInfo?` | Unary minus (negation) operator for 32-bit integers `-x`.
 144 | `Multiply_IntInt` | `y@insn x@insn u8 DebugInfo?` | Multiplies two 32-bit integers and stores the result in the return value. NOTE: `y` is evaluated before `x`, but the operation is `x * y`.
 145 | `Divide_IntInt` | `x@insn y@insn u8 DebugInfo?` | Divides 32-bit integers `x` by `y`. If `y` is zero, logs an error and the result is zero.
@@ -241,44 +244,44 @@ Index | Name | Operands | Description
 183 | `DivideEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Divides a float in place `lvalue /= rvalue`. Returns the divided value. If `lvalue` is not an lvalue, returns `lvalue / rvalue` with no side effects. If `rvalue` is zero, logs an error message, and the result is as defined by IEEE 754.
 184 | `AddEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Adds a float in place `lvalue += rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
 185 | `SubtractEqual_FloatFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Subtracts a float in place `lvalue -= rvalue`. Returns the multiplied value. If `lvalue` is not an lvalue, returns `lvalue * rvalue` with no side effects.
-186 | `Abs` | unknown | -
-187 | `Sin` | unknown | -
-188 | `Cos` | unknown | -
-189 | `Tan` | unknown | -
-190 | `Atan` | unknown | -
-191 | `Exp` | unknown | -
-192 | `Loge` | unknown | -
-193 | `Sqrt` | unknown | -
-194 | `Square` | unknown | -
-195 | `FRand` | unknown | -
+186 | `Abs` | `x@insn u8 DebugInfo?` | Returns the absolute value of a float.
+187 | `Sin` | `x@insn u8 DebugInfo?` | Returns the sine of `x`.
+188 | `Cos` | `x@insn u8 DebugInfo?` | Returns the cosine of `x`.
+189 | `Tan` | `x@insn u8 DebugInfo?` | Returns the tangent of `x`.
+190 | `Atan` | `x@insn u8 DebugInfo?` | Returns the arc tangent of `x`.
+191 | `Exp` | `x@insn u8 DebugInfo?` | Returns the constant e raised to the power of `x`.
+192 | `Loge` | `x@insn u8 DebugInfo?` | Returns the natural logarithm of `x`.
+193 | `Sqrt` | `x@insn u8 DebugInfo?` | Returns the square root of `x`.
+194 | `Square` | `x@insn u8 DebugInfo?` | Returns the square of `x`.
+195 | `FRand` | `u8 DebugInfo?` | Returns a random float between 0 and 1.
 196 | `GreaterGreaterGreater_IntInt` | `x@insn y@insn u8 DebugInfo?` | Right-shifts the unsigned 32-bit integer `x` by `y` bits. `y` is moduloed by 32 so `1 >>> 32` is the same as `1 >>> 1`.
-197 | `IsA` | unknown | -
+197 | `IsA` | `classname@insn u8 DebugInfo?` | The `Object.IsA` function. Checks if the object is of a class with the given `classname` (`FName`), with respect to the inheritance hierarchy.
 198 | `MultiplyEqual_ByteFloat` | unknown | -
 199 | `Round` | unknown | -
 200 | - | - | Hole.
 201 | `Repl` | unknown | -
 202 | - | - | Hole.
-203 | `NotEqual_RotatorRotator` | unknown | -
+203 | `NotEqual_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | Compares two rotators `x != y`.
 204 .. 209 | - | - | Hole.
 210 | `ComplementEqual_FloatFloat` | `x@insn y@insn u8 DebugInfo?` | Approximate equality operator. Same as `abs(x - y) < 0.0001`.
-211 | `Subtract_PreVector` | unknown | -
-212 | `Multiply_VectorFloat` | unknown | -
-213 | `Multiply_FloatVector` | unknown | -
-214 | `Divide_VectorFloat` | unknown | -
-215 | `Add_VectorVector` | unknown | -
-216 | `Subtract_VectorVector` | unknown | -
-217 | `EqualEqual_VectorVector` | unknown | -
-218 | `NotEqual_VectorVector` | unknown | -
-219 | `Dot_VectorVector` | unknown | -
-220 | `Cross_VectorVector` | unknown | -
-221 | `MultiplyEqual_VectorFloat` | unknown | -
-222 | `DivideEqual_VectorFloat` | unknown | -
-223 | `AddEqual_VectorVector` | unknown | -
-224 | `SubtractEqual_VectorVector` | unknown | -
-225 | `VSize` | unknown | -
-226 | `Normal` | unknown | -
-227 | `Normal2D` | unknown | -
-228 | `VSizeSq` | unknown | -
+211 | `Subtract_PreVector` | `x@insn u8 DebugInfo?` | Unary minus (negation) for floats `-x`.
+212 | `Multiply_VectorFloat` | `x@insn y@insn u8 DebugInfo?` | Multiplies a vector by a float `x * y`.
+213 | `Multiply_FloatVector` | `x@insn y@insn u8 DebugInfo?` | Same as above, with the argument order swapped.
+214 | `Divide_VectorFloat` | `x@insn y@insn u8 DebugInfo?` | Divides a vector by a float `x / y`.
+215 | `Add_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Adds two vectors to each other `x + y`.
+216 | `Subtract_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Subtracts two vectors from each other `x - y`.
+217 | `EqualEqual_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Compares two vectors `x == y`.
+218 | `NotEqual_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Compares two vectors `x != y`.
+219 | `Dot_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Computes the dot product of two vectors `x` and `y`.
+220 | `Cross_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Computes the cross product of two vectors `x` and `y`.
+221 | `MultiplyEqual_VectorFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies the vector variable `lvalue` in place by `rvalue`.
+222 | `DivideEqual_VectorFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Divides the vector variable `lvalue` in place by `rvalue`.
+223 | `AddEqual_VectorVector` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Adds the vector `rvalue` to the vector variable `lvalue` in place.
+224 | `SubtractEqual_VectorVector` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Subtracts the vector `rvalue` from the vector variable `lvalue` in place.
+225 | `VSize` | `vec@insn u8 DebugInfo?` | Returns the Euclidian length of the vector `vec`. This is the same as `Sqrt(vec.X * vec.X + vec.Y * vec.Y)`
+226 | `Normal` | `vec@insn u8 DebugInfo?` | Returns the vector `vec`, normalized. This is the same as `vec / VSize(vec)`.
+227 | `Normal2D` | `vec@insn u8 DebugInfo?` | -
+228 | `VSizeSq` | `vec@insn u8 DebugInfo?` | Same as `VSize`, except the result is not square-rooted. As such this is equivalent to `vec.X * vec.X + vec.Y * vec.Y`.
 229 | `GetAxes` | unknown | -
 230 | `GetUnAxes` | unknown | -
 231 | `LogInternal` | unknown | -
@@ -292,10 +295,10 @@ Index | Name | Operands | Description
 239 .. 241 | - | - | Hole.
 242 | `EqualEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x == y`. The return value is widened to a `uint32_t`.
 243 | `NotEqual_BoolBool` | `x@insn y@insn u8 DebugInfo?` | Compares two booleans `x != y`. The return value is widened to a `uint32_t`.
-244 | `FMin` | unknown | -
-245 | `FMax` | unknown | -
-246 | `FClamp` | unknown | -
-247 | `Lerp` | unknown | -
+244 | `FMin` | `x@insn y@insn u8 DebugInfo?` | Returns the smaller of the two float values `x` and `y`.
+245 | `FMax` | `x@insn y@insn u8 DebugInfo?` | Returns the larger of the two float values `x` and `y`.
+246 | `FClamp` | `x@insn min@insn max@insn u8 DebugInfo?` | Returns the number `x` clamped to fit between the interval `min .. max`. This is the same as `FMax(FMin(x, max), min)`.
+247 | `Lerp` | `a@insn b@insn t@insn` | Linearly interpolates between `a` and `b` using the factor `t`. This is the same as `a + t * (b - a)`.
 248 | - | - | Hole.
 249 | `Min` | unknown | -
 250 | `Max` | unknown | -
@@ -306,7 +309,7 @@ Index | Name | Operands | Description
 255 | `NotEqual_NameName` | `x@insn y@insn u8 DebugInfo?` | Compares two `FName`s `x != y`. Effectively an alias for `NotEqual_ObjectObject`, since `FName` and `UObject*` have the same size, so the compiler optimizes this away to share the same function.
 256 | `Actor.Sleep` | unknown | -
 257 | - | - | Hole.
-258 | `ClassIsChildOf` | unknown | -
+258 | `ClassIsChildOf` | `class@insn base@insn u8 DebugInfo?` | Returns whether the given `class` extends the class `base` by walking its inheritance hierarchy.
 259 .. 260 | - | - | Hole.
 261 | `Actor.FinishAnim` | unknown | -
 262 | `Actor.SetCollision` | unknown | -
@@ -318,8 +321,8 @@ Index | Name | Operands | Description
 271 | `Subtract_QuatQuat` | unknown | -
 272 | `Actor.SetOwner` | unknown | -
 273 .. 274 | - | - | Hole.
-275 | `LessLess_VectorRotator` | unknown | -
-276 | `GreaterGreater_VectorRotator` | unknown | -
+275 | `LessLess_VectorRotator` | `x@insn y@insn u8 DebugInfo?` | -
+276 | `GreaterGreater_VectorRotator` | `x@insn y@insn u8 DebugInfo?` | -
 277 | `Actor.Trace` | unknown | -
 278 | - | - | Hole.
 279 | `Actor.Destroy` | unknown | -
@@ -329,14 +332,14 @@ Index | Name | Operands | Description
 283 | `Actor.SetCollisionSize` | unknown | -
 284 | `GetStateName` | unknown | -
 285 .. 286 | - | - | Hole.
-287 | `Multiply_RotatorFloat` | unknown | -
-288 | `Multiply_FloatRotator` | unknown | -
-289 | `Divide_RotatorFloat` | unknown | -
-290 | `MultiplyEqual_RotatorFloat` | unknown | -
-291 | `DivideEqual_RotatorFloat` | unknown | -
+287 | `Multiply_RotatorFloat` | `x@insn y@insn u8 DebugInfo?` | -
+288 | `Multiply_FloatRotator` | `x@insn y@insn u8 DebugInfo?` | -
+289 | `Divide_RotatorFloat` | `x@insn y@insn u8 DebugInfo?` | -
+290 | `MultiplyEqual_RotatorFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
+291 | `DivideEqual_RotatorFloat` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
 292 .. 295 | - | - | Hole.
-296 | `Multiply_VectorVector` | unknown | -
-297 | `MultiplyEqual_VectorVector` | unknown | -
+296 | `Multiply_VectorVector` | `x@insn y@insn u8 DebugInfo?` | Multiplies two vectors together component-wise.
+297 | `MultiplyEqual_VectorVector` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Multiplies the vector stored in the variable `lvalue` by the vector `rvalue` in place.
 298 | `Actor.SetBase` | unknown | -
 299 | `Actor.SetRotation` | unknown | -
 300 | `MirrorVectorByNormal` | unknown | -
@@ -352,10 +355,10 @@ Index | Name | Operands | Description
 312 | `Actor.VisibleCollidingActors` | unknown | -
 313 | `Actor.DynamicActors` | unknown | -
 314 .. 315 | - | - | Hole.
-316 | `Add_RotatorRotator` | unknown | -
-317 | `Subtract_RotatorRotator` | unknown | -
-318 | `AddEqual_RotatorRotator` | unknown | -
-319 | `SubtractEqual_RotatorRotator` | unknown | -
+316 | `Add_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | -
+317 | `Subtract_RotatorRotator` | `x@insn y@insn u8 DebugInfo?` | -
+318 | `AddEqual_RotatorRotator` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
+319 | `SubtractEqual_RotatorRotator` | `lvalue@insn rvalue@insn u8 DebugInfo?` | -
 320 | `RotRand` | unknown | -
 321 | `Actor.CollidingActors` | unknown | -
 322 | `ConcatEqual_StrStr` | `lvalue@insn rvalue@insn u8 DebugInfo?` | Concatenates a string `rvalue` onto another string `lvalue` in place.
@@ -417,6 +420,9 @@ Index | Name | Operands | Description
   - Certain unknown opcodes are "unknown single-byte opcodes," which mean that they take no
     operands but their name or functionality hasn't been uncovered yet.
 - Unary operators seem to have a `u8` sentinel that is not used nor checked in any way.
+- `Iterator` is really weird: `UObject::execIterator` is, as far as I can tell, an empty function,
+  which makes zero sense, since `UStruct::SerializeExpr` does some stuff to read an instruction and
+  a 16-byte value. But the opcode clearly _does work_, the question is _how????_
 
 ### Function parameters
 

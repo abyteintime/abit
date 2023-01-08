@@ -19,10 +19,10 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::EndOfScript) = { PEmpty };
 	e.Rule(Opcode::Nothing) = { PEmpty };
 
-	e.Rule(Opcode::Jump) = { POffset };
-	e.Rule(Opcode::JumpIfNot) = { POffset, PInsn };
-	e.Rule(Opcode::JumpIfNotEditorOnly) = { POffset };
-	e.Rule(Opcode::Conditional) = { PInsn, POffset, PInsn, POffset, PInsn };
+	e.Rule(Opcode::Jump) = { POAbs };
+	e.Rule(Opcode::JumpIfNot) = { POAbs, PInsn };
+	e.Rule(Opcode::JumpIfNotEditorOnly) = { POAbs };
+	e.Rule(Opcode::Conditional) = { PInsn, PORel, PInsn, PORel, PInsn };
 
 	e.Rule(Opcode::Assert) = { PU16, PU8, PInsn };
 
@@ -39,7 +39,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::IntConstByte) = { PU8 };
 	e.Rule(Opcode::FloatConst) = { PFloat };
 	e.Rule(Opcode::ObjectConst) = { PObj };
-	e.Rule(Opcode::NameConst) = { PU64 };
+	e.Rule(Opcode::NameConst) = { PName };
 	e.Rule(Opcode::StringConst) = { PAnsiString };
 	e.Rule(Opcode::RotationConst) = { PFloat, PFloat, PFloat };
 	e.Rule(Opcode::VectorConst) = { PFloat, PFloat, PFloat };
@@ -55,14 +55,18 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::BoolVariable) = { PInsn };
 	e.Rule(Opcode::Let) = { PInsn, PInsn };
 	e.Rule(Opcode::LetBool) = { PInsn, PInsn };
+	e.Rule(Opcode::LetDelegate) = { PInsn, PInsn };
 	e.Rule(Opcode::StructMember) = { PObj, PObj, PU8, PU8, PInsn };
+	e.Rule(Opcode::ArrayElement) = { PInsn, PInsn };
 
 	// Functions and function calls
 
 	// Calls
 	Primitive rFnArgs{ PInsns, Opcode::EndFunctionParms };
-	e.Rule(Opcode::VirtualFunction) = { PU64, rFnArgs, PDebugInfo };
+	e.Rule(Opcode::VirtualFunction) = { PName, rFnArgs, PDebugInfo };
 	e.Rule(Opcode::FinalFunction) = { PObj, rFnArgs, PDebugInfo };
+	e.Rule(Opcode::DelegateFunction) = { PU8, PObj, PName, rFnArgs };
+	e.Rule(Opcode::GlobalFunction) = { PName, rFnArgs, PDebugInfo };
 	e.Rule(Opcode::EmptyParmValue) = { PEmpty };
 	e.Rule(Opcode::EndFunctionParms) = { PEmpty };
 
@@ -78,96 +82,178 @@ Encoding yarn::encoding = []() {
 	// Other (functionality yet to be uncovered)
 	e.Rule(Opcode::InterfaceContext) = { PInsn };
 
-	// Unary operators
+	// Rule shortcuts for functions
 
-	Rule rUnaryOp{ PInsn, PSentinel, PDebugInfo };
-	e.Rule(Opcode::Not_PreBool) = rUnaryOp;
-	e.Rule(Opcode::Complement_PreInt) = rUnaryOp;
-	e.Rule(Opcode::Subtract_PreInt) = rUnaryOp;
-	e.Rule(Opcode::AddAdd_PreInt) = rUnaryOp;
-	e.Rule(Opcode::SubtractSubtract_PreInt) = rUnaryOp;
-	e.Rule(Opcode::AddAdd_Int) = rUnaryOp;
-	e.Rule(Opcode::SubtractSubtract_Int) = rUnaryOp;
-	e.Rule(Opcode::Subtract_PreFloat) = rUnaryOp;
-
-	// Binary operators
-
-	Rule rBinaryOp{ PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn0{ PSentinel, PDebugInfo };
+	Rule rFn1{ PInsn, PSentinel, PDebugInfo };
+	Rule rFn2{ PInsn, PInsn, PSentinel, PDebugInfo };
+	Rule rFn3{ PInsn, PInsn, PInsn, PSentinel, PDebugInfo };
 
 	// Bools
 
+	e.Rule(Opcode::Not_PreBool) = rFn1;
+
 	// These bool operators are unlike other binary operators because they short-circuit.
-	Rule rShortCircuitingBinaryOp{ PInsn, PSentinel, POffset, PInsn, PSentinel };
+	Rule rShortCircuitingBinaryOp{ PInsn, PSentinel, PORel, PInsn, PSentinel };
 	e.Rule(Opcode::AndAnd_BoolBool) = rShortCircuitingBinaryOp;
 	e.Rule(Opcode::OrOr_BoolBool) = rShortCircuitingBinaryOp;
 
-	e.Rule(Opcode::EqualEqual_BoolBool) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_BoolBool) = rBinaryOp;
-	e.Rule(Opcode::XorXor_BoolBool) = rBinaryOp;
+	e.Rule(Opcode::EqualEqual_BoolBool) = rFn2;
+	e.Rule(Opcode::NotEqual_BoolBool) = rFn2;
+	e.Rule(Opcode::XorXor_BoolBool) = rFn2;
+
+	// Bytes
+
+	e.Rule(Opcode::MultiplyEqual_ByteByte) = rFn2;
+	e.Rule(Opcode::DivideEqual_ByteByte) = rFn2;
+	e.Rule(Opcode::AddEqual_ByteByte) = rFn2;
+	e.Rule(Opcode::SubtractEqual_ByteByte) = rFn2;
+	e.Rule(Opcode::AddAdd_PreByte) = rFn1;
+	e.Rule(Opcode::SubtractSubtract_PreByte) = rFn1;
+	e.Rule(Opcode::AddAdd_Byte) = rFn1;
+	e.Rule(Opcode::SubtractSubtract_Byte) = rFn1;
+	e.Rule(Opcode::MultiplyEqual_ByteFloat) = rFn2;
 
 	// Ints
-	e.Rule(Opcode::Multiply_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Divide_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Add_IntInt) = rBinaryOp;
-	e.Rule(Opcode::LessLess_IntInt) = rBinaryOp;
-	e.Rule(Opcode::GreaterGreater_IntInt) = rBinaryOp;
-	e.Rule(Opcode::GreaterGreaterGreater_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Less_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Greater_IntInt) = rBinaryOp;
-	e.Rule(Opcode::LessEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::GreaterEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::EqualEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::And_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Xor_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Or_IntInt) = rBinaryOp;
-	e.Rule(Opcode::AddEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::SubtractEqual_IntInt) = rBinaryOp;
-	e.Rule(Opcode::Percent_IntInt) = rBinaryOp;
+
+	e.Rule(Opcode::Complement_PreInt) = rFn1;
+	e.Rule(Opcode::Subtract_PreInt) = rFn1;
+	e.Rule(Opcode::AddAdd_PreInt) = rFn1;
+	e.Rule(Opcode::SubtractSubtract_PreInt) = rFn1;
+	e.Rule(Opcode::AddAdd_Int) = rFn1;
+	e.Rule(Opcode::SubtractSubtract_Int) = rFn1;
+	e.Rule(Opcode::Multiply_IntInt) = rFn2;
+	e.Rule(Opcode::Divide_IntInt) = rFn2;
+	e.Rule(Opcode::Add_IntInt) = rFn2;
+	e.Rule(Opcode::Subtract_IntInt) = rFn2;
+	e.Rule(Opcode::LessLess_IntInt) = rFn2;
+	e.Rule(Opcode::GreaterGreater_IntInt) = rFn2;
+	e.Rule(Opcode::GreaterGreaterGreater_IntInt) = rFn2;
+	e.Rule(Opcode::Less_IntInt) = rFn2;
+	e.Rule(Opcode::Greater_IntInt) = rFn2;
+	e.Rule(Opcode::LessEqual_IntInt) = rFn2;
+	e.Rule(Opcode::GreaterEqual_IntInt) = rFn2;
+	e.Rule(Opcode::EqualEqual_IntInt) = rFn2;
+	e.Rule(Opcode::NotEqual_IntInt) = rFn2;
+	e.Rule(Opcode::And_IntInt) = rFn2;
+	e.Rule(Opcode::Xor_IntInt) = rFn2;
+	e.Rule(Opcode::Or_IntInt) = rFn2;
+	e.Rule(Opcode::AddEqual_IntInt) = rFn2;
+	e.Rule(Opcode::SubtractEqual_IntInt) = rFn2;
+	e.Rule(Opcode::Percent_IntInt) = rFn2;
 
 	// Floats
-	e.Rule(Opcode::MultiplyMultiply_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Multiply_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Divide_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Percent_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Add_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Subtract_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Less_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::Greater_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::LessEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::GreaterEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::EqualEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::MultiplyEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::DivideEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::AddEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::SubtractEqual_FloatFloat) = rBinaryOp;
-	e.Rule(Opcode::ComplementEqual_FloatFloat) = rBinaryOp;
+
+	// Operators
+	e.Rule(Opcode::Subtract_PreFloat) = rFn1;
+	e.Rule(Opcode::MultiplyMultiply_FloatFloat) = rFn2;
+	e.Rule(Opcode::Multiply_FloatFloat) = rFn2;
+	e.Rule(Opcode::Divide_FloatFloat) = rFn2;
+	e.Rule(Opcode::Percent_FloatFloat) = rFn2;
+	e.Rule(Opcode::Add_FloatFloat) = rFn2;
+	e.Rule(Opcode::Subtract_FloatFloat) = rFn2;
+	e.Rule(Opcode::Less_FloatFloat) = rFn2;
+	e.Rule(Opcode::Greater_FloatFloat) = rFn2;
+	e.Rule(Opcode::LessEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::GreaterEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::EqualEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::NotEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::MultiplyEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::DivideEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::AddEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::SubtractEqual_FloatFloat) = rFn2;
+	e.Rule(Opcode::ComplementEqual_FloatFloat) = rFn2;
+
+	// Functions
+	e.Rule(Opcode::Abs) = rFn1;
+	e.Rule(Opcode::Sin) = rFn1;
+	e.Rule(Opcode::Cos) = rFn1;
+	e.Rule(Opcode::Tan) = rFn1;
+	e.Rule(Opcode::Atan) = rFn1;
+	e.Rule(Opcode::Exp) = rFn1;
+	e.Rule(Opcode::Loge) = rFn1;
+	e.Rule(Opcode::Sqrt) = rFn1;
+	e.Rule(Opcode::Square) = rFn1;
+	e.Rule(Opcode::FRand) = rFn0;
+	e.Rule(Opcode::FMin) = rFn2;
+	e.Rule(Opcode::FMax) = rFn2;
+	e.Rule(Opcode::FClamp) = rFn3;
+	e.Rule(Opcode::Lerp) = rFn3;
+
+	// Vectors
+
+	// Operators
+	e.Rule(Opcode::Subtract_PreVector) = rFn1;
+	e.Rule(Opcode::Multiply_VectorFloat) = rFn2;
+	e.Rule(Opcode::Multiply_FloatVector) = rFn2;
+	e.Rule(Opcode::Divide_VectorFloat) = rFn2;
+	e.Rule(Opcode::Add_VectorVector) = rFn2;
+	e.Rule(Opcode::Subtract_VectorVector) = rFn2;
+	e.Rule(Opcode::Multiply_VectorVector) = rFn2;
+	e.Rule(Opcode::EqualEqual_VectorVector) = rFn2;
+	e.Rule(Opcode::NotEqual_VectorVector) = rFn2;
+	e.Rule(Opcode::Dot_VectorVector) = rFn2;
+	e.Rule(Opcode::Cross_VectorVector) = rFn2;
+	e.Rule(Opcode::AddEqual_VectorVector) = rFn2;
+	e.Rule(Opcode::SubtractEqual_VectorVector) = rFn2;
+	e.Rule(Opcode::MultiplyEqual_VectorFloat) = rFn2;
+	e.Rule(Opcode::DivideEqual_VectorFloat) = rFn2;
+	e.Rule(Opcode::MultiplyEqual_VectorVector) = rFn2;
+
+	// Functions
+	e.Rule(Opcode::VSize) = rFn1;
+	e.Rule(Opcode::VSizeSq) = rFn1;
+	e.Rule(Opcode::Normal) = rFn1;
+	e.Rule(Opcode::Normal2D) = rFn1;
+
+	// Rotators
+
+	// Operators
+	e.Rule(Opcode::EqualEqual_RotatorRotator) = rFn2;
+	e.Rule(Opcode::NotEqual_RotatorRotator) = rFn2;
+	e.Rule(Opcode::LessLess_VectorRotator) = rFn2;
+	e.Rule(Opcode::GreaterGreater_VectorRotator) = rFn2;
+	e.Rule(Opcode::Multiply_RotatorFloat) = rFn2;
+	e.Rule(Opcode::Multiply_FloatRotator) = rFn2;
+	e.Rule(Opcode::Divide_RotatorFloat) = rFn2;
+	e.Rule(Opcode::MultiplyEqual_RotatorFloat) = rFn2;
+	e.Rule(Opcode::DivideEqual_RotatorFloat) = rFn2;
+	e.Rule(Opcode::Add_RotatorRotator) = rFn2;
+	e.Rule(Opcode::Subtract_RotatorRotator) = rFn2;
+	e.Rule(Opcode::AddEqual_RotatorRotator) = rFn2;
+	e.Rule(Opcode::SubtractEqual_RotatorRotator) = rFn2;
 
 	// Strings
-	e.Rule(Opcode::Concat_StrStr) = rBinaryOp;
-	e.Rule(Opcode::At_StrStr) = rBinaryOp;
-	e.Rule(Opcode::EqualEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::ComplementEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::Less_StrStr) = rBinaryOp;
-	e.Rule(Opcode::LessEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::Greater_StrStr) = rBinaryOp;
-	e.Rule(Opcode::GreaterEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::ConcatEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::AtEqual_StrStr) = rBinaryOp;
-	e.Rule(Opcode::SubtractEqual_StrStr) = rBinaryOp;
+
+	e.Rule(Opcode::Concat_StrStr) = rFn2;
+	e.Rule(Opcode::At_StrStr) = rFn2;
+	e.Rule(Opcode::EqualEqual_StrStr) = rFn2;
+	e.Rule(Opcode::NotEqual_StrStr) = rFn2;
+	e.Rule(Opcode::ComplementEqual_StrStr) = rFn2;
+	e.Rule(Opcode::Less_StrStr) = rFn2;
+	e.Rule(Opcode::LessEqual_StrStr) = rFn2;
+	e.Rule(Opcode::Greater_StrStr) = rFn2;
+	e.Rule(Opcode::GreaterEqual_StrStr) = rFn2;
+	e.Rule(Opcode::ConcatEqual_StrStr) = rFn2;
+	e.Rule(Opcode::AtEqual_StrStr) = rFn2;
+	e.Rule(Opcode::SubtractEqual_StrStr) = rFn2;
 
 	// Names
-	e.Rule(Opcode::EqualEqual_NameName) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_NameName) = rBinaryOp;
+
+	e.Rule(Opcode::EqualEqual_NameName) = rFn2;
+	e.Rule(Opcode::NotEqual_NameName) = rFn2;
 
 	// Objects
-	e.Rule(Opcode::EqualEqual_ObjectObject) = rBinaryOp;
-	e.Rule(Opcode::NotEqual_ObjectObject) = rBinaryOp;
 
-	// Dynamic arrays
-	e.Rule(Opcode::DynArrayAdd) = rBinaryOp;
+	e.Rule(Opcode::New) = { PInsn, PInsn, PInsn, PInsn, PInsn };
+	e.Rule(Opcode::Context) = { PInsn, PU16, PObj, PU8, PInsn };
+	e.Rule(Opcode::ClassContext) = { PInsn, PU16, PObj, PU8, PInsn };
+
+	e.Rule(Opcode::EqualEqual_ObjectObject) = rFn2;
+	e.Rule(Opcode::NotEqual_ObjectObject) = rFn2;
+
+	e.Rule(Opcode::ClassIsChildOf) = rFn2;
+	e.Rule(Opcode::IsA) = rFn1;
 
 	// Casts
 
@@ -176,25 +262,36 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::MetaCast) = { PObj, PInsn };
 	e.Rule(Opcode::DynamicCast) = { PObj, PInsn };
 
-	// Objects
+	// Delegates
 
-	e.Rule(Opcode::New) = { PInsn, PInsn, PInsn, PInsn, PInsn };
-	e.Rule(Opcode::Context) = { PInsn, PU16, PObj, PU8, PInsn };
-	e.Rule(Opcode::ClassContext) = { PInsn, PU16, PObj, PU8, PInsn };
+	e.Rule(Opcode::EmptyDelegate) = { PEmpty };
+	e.Rule(Opcode::DelegateProperty) = { PName, PObj };
+
+	e.Rule(Opcode::EqualEqual_DelegateDelegate) = rFn2;
+	e.Rule(Opcode::NotEqual_DelegateDelegate) = rFn2;
+	e.Rule(Opcode::EqualEqual_DelegateFunction) = rFn2;
+	e.Rule(Opcode::NotEqual_DelegateFunction) = rFn2;
 
 	// Dynamic arrays
 
 	e.Rule(Opcode::DynArrayLength) = { PInsn };
 	e.Rule(Opcode::DynArrayElement) = { PInsn, PInsn };
+	e.Rule(Opcode::DynArrayAdd) = rFn2;
 	e.Rule(Opcode::DynArrayInsert) = { PInsn, PInsn, PInsn, PDebugInfo };
 	e.Rule(Opcode::DynArrayRemove) = { PInsn, PInsn, PInsn, PDebugInfo };
 	e.Rule(Opcode::DynArrayAddItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
-	e.Rule(Opcode::DynArrayRemoveItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::DynArrayInsertItem) = { PInsn, PU16, PInsn, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArrayRemoveItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArrayFind) = { PInsn, PORel, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArrayFindStruct) = { PInsn, PORel, PInsn, PInsn, PSentinel, PDebugInfo };
 
 	// Iterators
 
+	e.Rule(Opcode::Iterator) = { PInsn, PORel };
 	e.Rule(Opcode::IteratorPop) = { PEmpty };
+	e.Rule(Opcode::Continue) = { PEmpty };
+
+	e.Rule(Opcode::DynArrayIterator) = { PInsn, PInsn, PSentinel, PInsn, PORel };
 
 	return e;
 }();

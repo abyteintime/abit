@@ -36,7 +36,7 @@ FString::~FString()
 std::wstring_view
 FString::ToWstringView() const
 {
-	return std::wstring_view{ dataPtr, size_t(length - 1) };
+	return std::wstring_view{ dataPtr, length > 0 ? size_t(length - 1) : 0 };
 }
 
 std::string

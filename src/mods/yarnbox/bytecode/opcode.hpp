@@ -52,6 +52,7 @@ namespace yarn {
 	EXPAND(DynamicCast, 46) \
 	EXPAND(Iterator, 47) \
 	EXPAND(IteratorPop, 48) \
+	EXPAND(Continue, 49) \
 	EXPAND(StructCmpEq, 50) \
 	EXPAND(StructCmpNe, 51) \
 	EXPAND(UnicodeStringConst, 52) \

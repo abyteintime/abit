@@ -1,5 +1,6 @@
 set(YARNBOX_SOURCES
 	"ue/AGameMod.cpp"
+	"ue/FName.cpp"
 	"ue/FString.cpp"
 	"ue/UClass.cpp"
 	"ue/UFunction.cpp"

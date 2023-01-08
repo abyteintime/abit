@@ -108,10 +108,13 @@ Disassembler::Disassemble()
 			static_cast<uint32_t>(opcode),
 			ipAtStart
 		);
-		outTree->SetFirstErrorIfNull(ipAtStart);
-		if (outStats != nullptr) {
+		// NOTE: Check IsBytecodeBogusAt before calling SetFirstErrorIfNull.
+		// This way we can detect whether this opcode was disassembled as part of a larger chain
+		// of failure, or whether this is the initiator of the chain.
+		if (outStats != nullptr && !outTree->IsBytecodeBogusAt(ip)) {
 			outStats->occurrencesOfUnknownOpcodes[static_cast<size_t>(opcode)] += 1;
 		}
+		outTree->SetFirstErrorIfNull(ipAtStart);
 		return outTree->AppendNode(node);
 	}
 
