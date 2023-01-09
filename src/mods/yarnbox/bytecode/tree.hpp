@@ -12,35 +12,32 @@ struct BytecodeTree
 	using NodeIndex = uint32_t;
 	using DataIndex = uint64_t;
 
+	/// Half-inclusive range of instruction pointers [start; end).
+	struct Span
+	{
+		uint16_t start;
+		uint16_t end;
+
+		static inline Span Invalid() { return { 0xFFFF, 0xFFFF }; }
+	};
+
 	struct Node
 	{
-		const size_t ip;
+		uint64_t data = 0;
 		Opcode opcode;
-		union
-		{
-			struct
-			{
-				uint32_t a, b;
-			} u32pair;
-			uint64_t u64 = 0;
-		} data;
+		Span span;
 
-		inline Node WithU32Pair(uint32_t a, uint32_t b)
+		Node(Span span, Opcode opcode, uint64_t data = 0)
+			: opcode(opcode)
+			, span(span)
+			, data(data)
 		{
-			data.u32pair.a = a;
-			data.u32pair.b = b;
-			return *this;
-		}
-
-		inline Node WithU64(uint64_t x)
-		{
-			data.u64 = x;
-			return *this;
 		}
 	};
 
 	std::vector<Node> nodes;
 	std::vector<uint64_t> data;
+	std::vector<Span> dataSpans;
 	std::vector<std::string> strings;
 	std::vector<std::wstring> wideStrings;
 	std::optional<size_t> firstError = std::nullopt;
@@ -56,6 +53,12 @@ struct BytecodeTree
 
 	inline uint64_t& Data(DataIndex index, size_t offset) { return data.at(index + offset); }
 	inline uint64_t Data(DataIndex index, size_t offset) const { return data.at(index + offset); }
+	inline Span DataSpan(DataIndex index, size_t offset) const
+	{
+		return index + offset < dataSpans.size() ? dataSpans.at(index + offset) : Span::Invalid();
+	}
+
+	void SetDataSpan(DataIndex index, Span span);
 };
 
 }

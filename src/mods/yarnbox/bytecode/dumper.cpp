@@ -28,10 +28,17 @@ DumpNodeRec(
 	std::string& outString
 );
 
+static bool
+PrimitiveHasDisplay(primitive::Type prim)
+{
+	using namespace yarn::primitive;
+	return !(prim == PEmpty || prim == PDebugInfo || prim == PSentinel);
+}
+
 static void
 DumpPrimRec(
 	const BytecodeTree& tree,
-	size_t ip,
+	BytecodeTree::Span span,
 	Primitive prim,
 	uint64_t value,
 	size_t level,
@@ -41,25 +48,27 @@ DumpPrimRec(
 	using namespace yarn::primitive;
 
 	auto out = std::back_inserter(outString);
+	if (PrimitiveHasDisplay(prim.type) && prim.type != PInsn) {
+		AddIndent(level, outString);
+		fmt::format_to(out, "{:03x}..{:03x} ", span.start, span.end);
+	}
 
 	switch (prim.type) {
 		case PUnsupported:
-			AddIndent(level, outString);
 			outString += "<unsupported>\n";
 			break;
 
 		case PEmpty:
 		case PDebugInfo:
 		case PSentinel:
+			// Those exist in the node's data but there's no reason for us to dump them.
 			break;
 
 		case PU8:
 		case PU16:
 		case PU32:
 		case PU64: {
-			AddIndent(level, outString);
-
-			bool isBytecodeBogus = tree.IsBytecodeBogusAt(ip);
+			bool isBytecodeBogus = tree.IsBytecodeBogusAt(span.start);
 			switch (static_cast<IntKind>(prim.arg)) {
 				case KUnsigned:
 					fmt::format_to(out, "i {}\n", value);
@@ -143,11 +152,9 @@ DumpPrimRec(
 		}
 
 		case PAnsiString:
-			AddIndent(level, outString);
 			fmt::format_to(out, "s \"{}\"\n", tree.strings[value]);
 			break;
 		case PWideString:
-			AddIndent(level, outString);
 			fmt::format_to(out, "s L\"{}\"\n", abit::Narrow(tree.wideStrings[value]));
 			break;
 
@@ -159,7 +166,6 @@ DumpPrimRec(
 		case PInsns: {
 			uint64_t count = tree.Data(value, 0);
 
-			AddIndent(level, outString);
 			fmt::format_to(out, "@+ ({}) [\n", count);
 			for (size_t i = 0; i < count; ++i) {
 				BytecodeTree::NodeIndex insn = tree.Data(value, 1 + i);
@@ -186,28 +192,23 @@ DumpNodeRec(
 	const BytecodeTree::Node& node = tree.nodes[nodeIndex];
 	fmt::format_to(
 		std::back_inserter(outString),
-		"@ {:04x} | {} ({})",
-		node.ip,
+		"{:03x}..{:03x} @ {} ({})",
+		node.span.start,
+		node.span.end,
 		OpcodeToString(node.opcode),
 		fmt::underlying(node.opcode)
 	);
-	if (tree.IsBytecodeBogusAt(node.ip)) {
+	if (tree.IsBytecodeBogusAt(node.span.start)) {
 		outString += " (bogus)";
 	}
 	outString += '\n';
 
 	const Rule& rule = encoding.Rule(node.opcode);
-	if (!rule.useData) {
-		uint64_t value = node.data.u64;
-		DumpPrimRec(tree, node.ip, rule.base, value, level + 1, outString);
-	} else {
-		size_t indexInData = 0;
-		for (size_t datum = 0; datum < rule.dataCount; ++datum) {
-			Primitive prim = rule.data[datum];
-			uint64_t value = tree.Data(node.data.u64, indexInData);
-			DumpPrimRec(tree, node.ip, prim, value, level + 1, outString);
-			indexInData += primitive::HasDataInBytecodeTree(prim.type);
-		}
+	for (size_t i = 0; i < rule.primsCount; ++i) {
+		Primitive prim = rule.prims[i];
+		uint64_t value = tree.Data(node.data, i);
+		BytecodeTree::Span ip = tree.DataSpan(node.data, i);
+		DumpPrimRec(tree, ip, prim, value, level + 1, outString);
 	}
 }
 

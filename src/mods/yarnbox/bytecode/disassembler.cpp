@@ -11,10 +11,10 @@ using NodeIndex = BytecodeTree::NodeIndex;
 using DataIndex = BytecodeTree::DataIndex;
 using Node = BytecodeTree::Node;
 
-Disassembler::Disassembler(const uint8_t* bytecode, size_t length, BytecodeTree& outTree)
+Disassembler::Disassembler(const uint8_t* bytecode, uint16_t length, BytecodeTree& outTree)
 	: bytecode(bytecode)
-	, length(length)
 	, outTree(&outTree)
+	, length(length)
 {
 }
 
@@ -103,23 +103,21 @@ Disassembler::InterpretPrimitive(Opcode contextOpcode, size_t contextIp, Primiti
 NodeIndex
 Disassembler::Disassemble()
 {
-	size_t ipAtStart = ip;
+	uint16_t ipAtStart = ip;
 	Opcode opcode = NextOpcode();
 	return DisassembleOpcode(ipAtStart, opcode);
 }
 
 NodeIndex
-Disassembler::DisassembleOpcode(size_t ipAtStart, Opcode opcode)
+Disassembler::DisassembleOpcode(uint16_t ipAtStart, Opcode opcode)
 {
-	Node node = Node{ ipAtStart, opcode };
-
 	if (opcode == Opcode::OutOfBounds) {
 		spdlog::warn("Disassembling opcode resulted in an out-of-bounds read");
 		outTree->SetFirstErrorIfNull(ipAtStart);
 		if (outStats != nullptr) {
 			outStats->outOfBoundsReads += 1;
 		}
-		return outTree->AppendNode(node);
+		return outTree->AppendNode({ { ipAtStart, ipAtStart }, opcode });
 	}
 
 	const Rule& rule = encoding.Rule(opcode);
@@ -139,23 +137,21 @@ Disassembler::DisassembleOpcode(size_t ipAtStart, Opcode opcode)
 			outStats->occurrencesOfUnknownOpcodes[static_cast<size_t>(opcode)] += 1;
 		}
 		outTree->SetFirstErrorIfNull(ipAtStart);
-		return outTree->AppendNode(node);
+		return outTree->AppendNode({ { ipAtStart, ipAtStart }, opcode });
 	}
 
-	if (rule.useData) {
-		DataIndex data = outTree->AppendData(rule.dataCount);
-		size_t indexInData = 0;
-		for (size_t i = 0; i < rule.dataCount; ++i) {
-			if (auto result = InterpretPrimitive(opcode, ipAtStart, rule.data[i])) {
-				outTree->Data(data, indexInData) = *result;
-				indexInData += 1;
-			}
+	DataIndex data = outTree->AppendData(rule.primsCount);
+	for (size_t i = 0; i < rule.primsCount; ++i) {
+		uint16_t ipAtDatumStart = ip;
+		if (auto result = InterpretPrimitive(opcode, ipAtStart, rule.prims[i])) {
+			outTree->Data(data, i) = *result;
 		}
-		return outTree->AppendNode(node.WithU64(data));
-	} else {
-		auto result = InterpretPrimitive(opcode, ipAtStart, rule.base);
-		return outTree->AppendNode(node.WithU64(result.value_or(0)));
+		uint16_t ipAtDatumEnd = ip;
+		outTree->SetDataSpan(data + i, { ipAtDatumStart, ipAtDatumEnd });
 	}
+
+	uint16_t ipAtEnd = ip;
+	return outTree->AppendNode({ { ipAtStart, ipAtEnd }, opcode, data });
 }
 
 Opcode

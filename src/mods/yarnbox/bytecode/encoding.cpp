@@ -2,12 +2,6 @@
 
 using namespace yarn;
 
-bool
-yarn::primitive::HasDataInBytecodeTree(Type t)
-{
-	return !(t == PDebugInfo || t == PSentinel);
-}
-
 Encoding yarn::encoding = []() {
 	using namespace yarn::primitive;
 

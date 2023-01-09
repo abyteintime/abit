@@ -40,9 +40,6 @@ enum IntKind : uint8_t
 	KName,         // FName
 };
 
-bool
-HasDataInBytecodeTree(Type t);
-
 }
 
 struct Primitive
@@ -93,30 +90,23 @@ constexpr Primitive PORel = { PU16, KOffsetRel };
 
 struct Rule
 {
-	Primitive base = primitive::PUnsupported;
-	bool useData = false;
-	Primitive data[8] = {
-		primitive::PEmpty, primitive::PEmpty, primitive::PEmpty, primitive::PEmpty,
-		primitive::PEmpty, primitive::PEmpty, primitive::PEmpty, primitive::PEmpty,
+	Primitive prims[8] = {
+		primitive::PUnsupported, primitive::PEmpty, primitive::PEmpty, primitive::PEmpty,
+		primitive::PEmpty,       primitive::PEmpty, primitive::PEmpty, primitive::PEmpty,
 	};
-	size_t dataCount = 0;
+	size_t primsCount = 1;
 
 	constexpr Rule() {}
 
 	template<typename... Prims>
-	constexpr Rule(Prims... prims)
+	constexpr Rule(Prims... prims_)
 	{
-		if (sizeof...(prims) == 1) {
-			((base = prims), ...);
-		} else {
-			useData = true;
-			size_t i = 0;
-			((data[i++] = prims), ...);
-			dataCount = sizeof...(prims);
-		}
+		size_t i = 0;
+		((prims[i++] = prims_), ...);
+		primsCount = sizeof...(prims_);
 	}
 
-	inline bool IsUnsupported() const { return !useData && base.type == primitive::PUnsupported; }
+	inline bool IsUnsupported() const { return prims[0].type == primitive::PUnsupported; }
 };
 
 struct Encoding

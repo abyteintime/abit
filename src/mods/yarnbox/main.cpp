@@ -59,8 +59,18 @@ UFunction_Serialize(UFunction* self, FArchive* ar)
 	spdlog::debug("  - outer: {:ip}", UObjectFmt{ self->outer });
 	spdlog::debug("  - bytecode: ({} bytes) {}", self->bytecode.length, self->bytecode.Range());
 
+	if (Disassembler::IsBytecodeTooLarge(self->bytecode.length)) {
+		spdlog::error(
+			"Bytecode in chunk is too large (exceeds 16-bit unsigned integer limit; length is {})",
+			self->bytecode.length
+		);
+		return;
+	}
+
 	BytecodeTree tree;
-	Disassembler disassembler{ self->bytecode.dataPtr, size_t(self->bytecode.length), tree };
+	Disassembler disassembler{ self->bytecode.dataPtr,
+							   static_cast<uint16_t>(self->bytecode.length),
+							   tree };
 	std::string stringDump;
 	disassembler.EnableStatCollection(disassemblerStats);
 	bool success = true;

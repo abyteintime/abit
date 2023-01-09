@@ -64,3 +64,12 @@ BytecodeTree::IsBytecodeBogusAt(size_t ip) const
 		return false;
 	}
 }
+
+void
+BytecodeTree::SetDataSpan(DataIndex index, Span span)
+{
+	if (dataSpans.size() <= index) {
+		dataSpans.resize(index + 1);
+	}
+	dataSpans.at(index) = span;
+}

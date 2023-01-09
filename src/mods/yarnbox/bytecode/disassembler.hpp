@@ -27,26 +27,29 @@ struct Disassembler
 	};
 
 	const uint8_t* bytecode;
-	size_t length;
 	BytecodeTree* outTree;
-
-	size_t ip = 0;
 	Stats* outStats = nullptr;
+	uint16_t length;
+	uint16_t ip = 0;
 
-	Disassembler(const uint8_t* bytecode, size_t length, BytecodeTree& outTree);
+	Disassembler(const uint8_t* bytecode, uint16_t length, BytecodeTree& outTree);
 
 	void EnableStatCollection(Stats& outStats);
 
 	BytecodeTree::NodeIndex Disassemble();
 	bool AtEnd() const { return ip >= length; }
 
+	static bool IsBytecodeTooLarge(size_t length)
+	{
+		return length >= size_t(std::numeric_limits<uint16_t>::max());
+	}
 	bool ShouldStopDisassembling() { return outTree->IsBytecodeBogusAt(ip); }
 
 private:
-	BytecodeTree::NodeIndex DisassembleOpcode(size_t ipAtStart, Opcode opcode);
+	BytecodeTree::NodeIndex DisassembleOpcode(uint16_t ipAtStart, Opcode opcode);
 
 	inline uint8_t CurrentByte() const { return AtEnd() ? 0 : bytecode[ip]; }
-	inline void Advance(ptrdiff_t by = 1) { ip += by; }
+	inline void Advance(int16_t by = 1) { ip += by; }
 
 	inline Opcode CurrentLowOpcode() const
 	{
