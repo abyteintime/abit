@@ -1,10 +1,10 @@
 #pragma once
 
-#include "yarnbox/ue/common.hpp"
+#include "abit/ue/common.hpp"
 
-#include "yarnbox/ue/FArchive.hpp"
-#include "yarnbox/ue/TArray.hpp"
-#include "yarnbox/ue/UObject.hpp"
+#include "abit/ue/FArchive.hpp"
+#include "abit/ue/TArray.hpp"
+#include "abit/ue/UObject.hpp"
 
 namespace ue {
 

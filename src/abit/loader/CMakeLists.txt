@@ -11,7 +11,6 @@ target_link_libraries(AByteInTime.Loader.API
 	MinHook
 	spdlog::spdlog
 )
-target_include_directories(AByteInTime.Loader.API PUBLIC .)
 
 set(ABIT_LOADER_SOURCES
 	"main.cpp"

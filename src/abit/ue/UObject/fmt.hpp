@@ -2,9 +2,9 @@
 
 #include "fmt/format.h"
 
-#include "yarnbox/ue/FString.hpp"
-#include "yarnbox/ue/UClass.hpp"
-#include "yarnbox/ue/UObject.hpp"
+#include "abit/ue/FString.hpp"
+#include "abit/ue/UClass.hpp"
+#include "abit/ue/UObject.hpp"
 
 namespace ue {
 

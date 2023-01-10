@@ -1,4 +1,4 @@
-#include "yarnbox/ue/AGameMod.hpp"
+#include "abit/ue/AGameMod.hpp"
 
 #include "abit/procs/AGameMod.hpp"
 

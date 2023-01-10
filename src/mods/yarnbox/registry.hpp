@@ -7,8 +7,8 @@
 
 #include "abit/map.hpp"
 
-#include "yarnbox/ue/UClass.hpp"
-#include "yarnbox/ue/UFunction.hpp"
+#include "abit/ue/UClass.hpp"
+#include "abit/ue/UFunction.hpp"
 
 namespace yarn {
 

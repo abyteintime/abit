@@ -4,8 +4,8 @@
 
 #include "abit/procs/global.hpp"
 
-#include "yarnbox/ue/FFrame.hpp"
-#include "yarnbox/ue/UObject.hpp"
+#include "abit/ue/FFrame.hpp"
+#include "abit/ue/UObject.hpp"
 
 #include "yarnbox/bytecode/opcode.hpp"
 

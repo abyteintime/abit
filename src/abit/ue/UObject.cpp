@@ -1,8 +1,8 @@
-#include "yarnbox/ue/UObject.hpp"
+#include "abit/ue/UObject.hpp"
 
 #include "abit/procs/UObject.hpp"
 
-#include "yarnbox/ue/UClass.hpp"
+#include "abit/ue/UClass.hpp"
 
 using namespace ue;
 

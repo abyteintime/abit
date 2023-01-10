@@ -20,3 +20,4 @@ target_link_libraries(AByteInTime.Common
 add_subdirectory("launcher")
 add_subdirectory("loader")
 add_subdirectory("procs")
+add_subdirectory("ue")

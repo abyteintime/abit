@@ -5,9 +5,9 @@
 #include "abit/string.hpp"
 #include "abit/templates.hpp"
 
+#include "abit/ue/UObject.hpp"
+#include "abit/ue/UObject/fmt.hpp"
 #include "yarnbox/bytecode/encoding.hpp"
-#include "yarnbox/ue/UObject.hpp"
-#include "yarnbox/ue/UObject/fmt.hpp"
 
 using namespace yarn;
 using namespace ue;

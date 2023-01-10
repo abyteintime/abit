@@ -1,10 +1,10 @@
-#include "yarnbox/ue/FString.hpp"
+#include "abit/ue/FString.hpp"
 
 #include "abit/string.hpp"
 
 #include "abit/procs/FString.hpp"
 
-#include "yarnbox/ue/memory.hpp"
+#include "abit/ue/memory.hpp"
 
 using namespace ue;
 
