@@ -4,6 +4,7 @@
 #include "abit/loader/logging.hpp"
 
 #include "yarnbox/ue/UObject/fmt.hpp"
+#include "yarnbox/ue/cast.hpp"
 
 using namespace yarn;
 using namespace ue;
@@ -11,32 +12,29 @@ using namespace ue;
 static void
 ApplyReplacement(const Patch::Replacement& replacement, const Registry& registry)
 {
-	const Class* replacementClass = registry.GetClassByName(replacement.className);
-	ABIT_ENSURE(replacementClass != nullptr, "class '{}' does not exist", replacement.className);
+	const Chunk* replacementChunk = registry.GetChunkByName(replacement.chunk);
+	ABIT_ENSURE(replacementChunk != nullptr, "chunk '{}' does not exist", replacement.chunk);
+	ABIT_ENSURE(
+		replacementChunk->ustruct->bytecode.length > 0, "chunk '{}' does not contain any bytecode"
+	);
+	UStruct* replacementSourceClass = Cast<UStruct>(replacementChunk->ustruct->outer);
 
-	UStruct* parentType = replacementClass->unreal->parentType;
+	UStruct* parentType = replacementSourceClass->parentType;
 	ABIT_ENSURE(
 		parentType->objectClass == UClass::StaticClass(),
-		"{}, the parent type of {}, is not a class",
+		"{}, the parent type of {}, is not a UClass",
 		UObjectFmt{ parentType },
-		UObjectFmt{ replacementClass->unreal }
+		UObjectFmt{ replacementChunk->ustruct }
 	);
 
-	const Class* parentClass = registry.GetClassByPointer(reinterpret_cast<UClass*>(parentType));
-
+	const Chunk* parentClass = registry.GetChunkByPointer(parentType);
 	ABIT_ENSURE(
-		replacementClass->functions.count(replacement.function) > 0,
-		"function '{}' does not exist within replacement class '{}'",
-		replacement.function,
-		replacement.className
-	);
-	ABIT_ENSURE(
-		parentClass->functions.count(replacement.function) > 0,
+		parentClass->functions.count(replacementChunk->name) > 0,
 		"function '{}' does not exist within the parent class '{}' of replacement class '{}'.\n"
 		"Available functions are:{}",
-		replacement.function,
-		parentClass->unreal->GetName().ToString(),
-		replacement.className,
+		replacementChunk->name,
+		parentClass->name,
+		replacementSourceClass->GetName().ToString(),
 		[parentClass] {
 			std::string text;
 			for (const auto& [key, value] : parentClass->functions) {
@@ -46,16 +44,19 @@ ApplyReplacement(const Patch::Replacement& replacement, const Registry& registry
 		}()
 	);
 
-	UFunction* functionToReplace = parentClass->functions.at(replacement.function).unreal;
-	UFunction* replacementFunction = replacementClass->functions.at(replacement.function).unreal;
+	auto* functionToReplace =
+		Cast<UFunction>(parentClass->functions.at(replacementChunk->name)->ustruct);
+	auto* replacementFunction = Cast<UFunction>(replacementChunk->ustruct);
+	ABIT_ENSURE(
+		replacementFunction != nullptr,
+		"chunk {} is not a UFunction",
+		UObjectFmt{ replacementChunk->ustruct }
+	);
+
 	functionToReplace->bytecode.Clear();
 	functionToReplace->bytecode.ExtendByCopying(replacementFunction->bytecode);
 
-	spdlog::debug(
-		"Replacement patch for {}.{} was applied successfully",
-		UObjectFmt{ parentType },
-		replacement.function
-	);
+	spdlog::debug("Replacement patch '{}' was applied successfully", replacement.chunk);
 }
 
 void

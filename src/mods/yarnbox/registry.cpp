@@ -2,81 +2,90 @@
 
 #include "abit/loader/logging.hpp"
 
+#include "fmt/core.h"
+
 #include "yarnbox/ue/UObject/fmt.hpp"
+#include "yarnbox/ue/cast.hpp"
 
 using namespace yarn;
 using namespace ue;
 
-void
-Registry::RegisterClass(UClass* uclass)
+Chunk::Chunk(UStruct* ustruct)
+	: ustruct(ustruct)
+	, name(ustruct->GetName().ToString())
+	, pathName(GetPathName(ustruct))
 {
-	FString name = uclass->GetName();
-	Class data{ uclass };
-	auto ptr = std::make_shared<Class>(std::move(data));
-	classesByName[name.ToString()] = ptr;
-	classesByPointer[uclass] = std::move(ptr);
 }
 
-bool
-Registry::IsClassRegistered(ue::UClass* uclass)
+static std::string
+GetObjectPathName(UObject* object)
 {
-	return classesByPointer.count(uclass) > 0;
-}
-
-void
-Registry::RegisterFunction(Function&& function)
-{
-	std::string name = function.unreal->GetName().ToString();
-	if (function.unreal->outer->objectClass != UClass::StaticClass()) {
-		spdlog::warn(
-			"Cannot register function '{}' that is not declared inside a class. It is declared "
-			"inside {}",
-			name,
-			UObjectFmt{ function.unreal->outer }
-		);
-		return;
-	}
-
-	UClass* declaringClass = reinterpret_cast<UClass*>(function.unreal->outer);
-	if (!IsClassRegistered(declaringClass)) {
-		RegisterClass(declaringClass);
-	}
-
-	Class* classData = GetClassByPointer(declaringClass);
-	if (classData->functions.count(name) > 0) {
-		spdlog::warn(
-			"Function '{}' from {} was registered twice", name, UObjectFmt{ declaringClass }
-		);
-	}
-	classData->functions[name] = std::move(function);
-}
-
-const Class*
-Registry::GetClassByName(const std::string& name) const
-{
-	if (classesByName.count(name) > 0) {
-		return &*classesByName.at(name);
+	std::string ownName = object->GetName().ToString();
+	if (object->outer != nullptr) {
+		return fmt::format("{}.{}", GetObjectPathName(object->outer), ownName);
 	} else {
-		return nullptr;
+		return ownName;
 	}
 }
 
-const Class*
-Registry::GetClassByPointer(ue::UClass* pointer) const
+std::string
+Chunk::GetPathName(ue::UStruct* ustruct)
 {
-	if (classesByPointer.count(pointer) > 0) {
-		return &*classesByPointer.at(pointer);
-	} else {
-		return nullptr;
-	}
+	return GetObjectPathName(ustruct);
 }
 
-Class*
-Registry::GetClassByPointer(ue::UClass* pointer)
+std::shared_ptr<Chunk>
+Registry::RegisterChunk(std::shared_ptr<Chunk>&& chunk)
 {
-	if (classesByPointer.count(pointer) > 0) {
-		return &*classesByPointer.at(pointer);
-	} else {
-		return nullptr;
+	if (chunksByPointer.count(chunk->ustruct) > 0) {
+		return chunksByPointer[chunk->ustruct];
 	}
+
+	if (auto* outer = Cast<UStruct>(chunk->ustruct->outer)) {
+		auto* outerChunk = GetChunkByPointer(outer);
+		if (outerChunk == nullptr) {
+			// Sometimes a class's functions are registered before the class itself.
+			// Thus, we need to handle that case and register the class here.
+			// This process may also cascade onto the class's enclosing package.
+			auto newOuterChunk = std::make_shared<Chunk>(outer);
+			spdlog::trace(
+				"Outer chunk '{}' needs to be registered before '{}'",
+				newOuterChunk->pathName,
+				chunk->pathName
+			);
+			outerChunk = RegisterChunk(std::move(newOuterChunk)).get();
+		}
+		outerChunk->functions[chunk->name] = chunk;
+	}
+
+	chunksByName[chunk->pathName] = chunk;
+	chunksByPointer[chunk->ustruct] = chunk;
+
+	spdlog::trace("Registered chunk {} as '{}'", UObjectFmt{ chunk->ustruct }, chunk->pathName);
+
+	return chunk;
+}
+
+const Chunk*
+Registry::GetChunkByName(const std::string& name) const
+{
+	return chunksByName.count(name) > 0 ? &*chunksByName.at(name) : nullptr;
+}
+
+Chunk*
+Registry::GetChunkByName(const std::string& name)
+{
+	return chunksByName.count(name) > 0 ? &*chunksByName.at(name) : nullptr;
+}
+
+const Chunk*
+Registry::GetChunkByPointer(ue::UStruct* pointer) const
+{
+	return chunksByPointer.count(pointer) > 0 ? &*chunksByPointer.at(pointer) : nullptr;
+}
+
+Chunk*
+Registry::GetChunkByPointer(ue::UStruct* pointer)
+{
+	return chunksByPointer.count(pointer) > 0 ? &*chunksByPointer.at(pointer) : nullptr;
 }

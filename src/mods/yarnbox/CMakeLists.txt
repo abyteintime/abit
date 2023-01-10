@@ -5,6 +5,7 @@ set(YARNBOX_SOURCES
 	"ue/UClass.cpp"
 	"ue/UFunction.cpp"
 	"ue/UObject.cpp"
+	"ue/UState.cpp"
 	"ue/UStruct.cpp"
 	"ue/memory.cpp"
 

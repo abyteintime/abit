@@ -11,8 +11,8 @@
 #include "abit/loader/patches.hpp"
 
 #include "abit/procs/FEngineLoop.hpp"
-#include "abit/procs/UFunction.hpp"
 #include "abit/procs/UObject.hpp"
+#include "abit/procs/UStruct.hpp"
 
 #include "yarnbox/config.hpp"
 #include "yarnbox/patcher.hpp"
@@ -46,50 +46,55 @@ static size_t attemptedDisassemblies = 0;
 static size_t functionsSuccessfullyDisassembled = 0;
 static Disassembler::Stats disassemblerStats;
 
-static void (*O_UFunction_Serialize)(UFunction*, FArchive*);
+static void (*O_UStruct_Serialize)(UStruct*, FArchive*);
 static void
-UFunction_Serialize(UFunction* self, FArchive* ar)
+UStruct_Serialize(UStruct* self, FArchive* ar)
 {
-	O_UFunction_Serialize(self, ar);
+	O_UStruct_Serialize(self, ar);
 
-	std::string name = self->GetName().ToString();
-	std::string outerName = self->outer->GetName().ToString();
+	spdlog::trace("Chunk: {}", UObjectFmt{ self });
+	spdlog::trace("  - outer: {:ip}", UObjectFmt{ self->outer });
 
-	spdlog::debug("Function: {}", name);
-	spdlog::debug("  - outer: {:ip}", UObjectFmt{ self->outer });
-	spdlog::debug("  - bytecode: ({} bytes) {}", self->bytecode.length, self->bytecode.Range());
-
-	if (Disassembler::IsBytecodeTooLarge(self->bytecode.length)) {
-		spdlog::error(
-			"Bytecode in chunk is too large (exceeds 16-bit unsigned integer limit; length is {})",
-			self->bytecode.length
-		);
+	if (self->objectClass == UState::StaticClass()) {
+		spdlog::debug("Ignoring state '{}' because modifying states is unsupported"); // TODO?
 		return;
 	}
 
-	BytecodeTree tree;
-	Disassembler disassembler{ self->bytecode.dataPtr,
-							   static_cast<uint16_t>(self->bytecode.length),
-							   tree };
-	std::string stringDump;
-	disassembler.EnableStatCollection(disassemblerStats);
-	bool success = true;
-	while (!disassembler.AtEnd()) {
-		BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
-		DumpNode(tree, nodeIndex, stringDump);
-		if (disassembler.ShouldStopDisassembling()) {
-			success = false;
-			break;
-		}
-	}
-	attemptedDisassemblies += 1;
-	functionsSuccessfullyDisassembled += success;
-	spdlog::debug("Disassembled bytecode into {} nodes", tree.nodes.size());
-	spdlog::trace("Disassembly:\n{}", stringDump);
+	auto chunk = std::make_shared<Chunk>(self);
+	if (self->bytecode.length > 0) {
+		spdlog::trace("  - bytecode: ({} bytes) {}", self->bytecode.length, self->bytecode.Range());
 
-	Function function;
-	function.unreal = reinterpret_cast<UFunction*>(self);
-	registry.RegisterFunction(std::move(function));
+		if (Disassembler::IsBytecodeTooLarge(self->bytecode.length)) {
+			spdlog::error(
+				"Bytecode in chunk {} is too large (exceeds 16-bit unsigned integer limit; length "
+				"is {})",
+				UObjectFmt{ self },
+				self->bytecode.length
+			);
+			return;
+		}
+
+		BytecodeTree tree;
+		Disassembler disassembler{ self->bytecode.dataPtr,
+								   static_cast<uint16_t>(self->bytecode.length),
+								   tree };
+		std::string stringDump;
+		disassembler.EnableStatCollection(disassemblerStats);
+		bool success = true;
+		while (!disassembler.AtEnd()) {
+			BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
+			DumpNode(tree, nodeIndex, stringDump);
+			if (disassembler.ShouldStopDisassembling()) {
+				success = false;
+				break;
+			}
+		}
+		attemptedDisassemblies += 1;
+		functionsSuccessfullyDisassembled += success;
+		spdlog::trace("Disassembled bytecode into {} nodes", tree.nodes.size());
+		spdlog::trace("Disassembly:\n{}", stringDump);
+	}
+	registry.RegisterChunk(std::move(chunk));
 }
 
 static void
@@ -190,7 +195,7 @@ FEngineLoop_Init(class FEngineLoop* self)
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
-	abit::Patch(abit::procs::UFunction::Serialize, &UFunction_Serialize, O_UFunction_Serialize);
+	abit::Patch(abit::procs::UStruct::Serialize, &UStruct_Serialize, O_UStruct_Serialize);
 	abit::Patch(abit::procs::FEngineLoop::Init, &FEngineLoop_Init, O_FEngineLoop_Init);
 	abit::Patch(abit::procs::UObject::CallFunction, &UObject_CallFunction, O_UObject_CallFunction);
 }

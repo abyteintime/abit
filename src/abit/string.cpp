@@ -5,6 +5,8 @@
 
 #include "abit/error.hpp"
 
+using namespace abit;
+
 std::wstring
 abit::Widen(std::string_view string)
 {
@@ -52,5 +54,47 @@ abit::Narrow(std::wstring_view string)
 		nullptr,
 		nullptr
 	);
+	return result;
+}
+
+char
+abit::CharToLowerAscii(char c)
+{
+	if (c >= 'A' && c <= 'Z') {
+		return c + 0x20;
+	} else {
+		return c;
+	}
+}
+
+char
+abit::CharToUpperAscii(char c)
+{
+	if (c >= 'a' && c <= 'z') {
+		return c - 0x20;
+	} else {
+		return c;
+	}
+}
+
+std::string
+abit::StringToLowerAscii(std::string_view string)
+{
+	std::string result;
+	result.reserve(string.size());
+	for (char c : string) {
+		result += CharToLowerAscii(c);
+	}
+	return result;
+}
+
+std::string
+abit::StringToUpperAscii(std::string_view string)
+{
+	std::string result;
+	result.reserve(string.size());
+	for (char c : string) {
+		result += CharToUpperAscii(c);
+	}
 	return result;
 }

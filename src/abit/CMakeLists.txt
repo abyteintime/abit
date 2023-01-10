@@ -6,6 +6,7 @@ set(ABIT_COMMON_SOURCES
 	"config_default.cpp"
 	"error.cpp"
 	"io.cpp"
+	"map.cpp"
 	"paths.cpp"
 	"string.cpp"
 )

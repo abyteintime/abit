@@ -37,8 +37,7 @@ PatchFromJson(const Json& json, uint32_t version)
 	switch (type) {
 		case PatchType::Replacement: {
 			Patch::Replacement replacement;
-			json.at("class").get_to(replacement.className);
-			json.at("function").get_to(replacement.function);
+			json.at("chunk").get_to(replacement.chunk);
 			patch.data = replacement;
 			break;
 		}

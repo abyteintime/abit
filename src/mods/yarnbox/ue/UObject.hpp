@@ -36,6 +36,14 @@ struct UObject
 		return *reinterpret_cast<VTable**>(this);
 	}
 
+	bool InstanceOf(struct UClass* type) const;
+
+	template<typename T>
+	bool Is() const
+	{
+		return Is(T::StaticClass());
+	}
+
 private:
 	/// Used to tell the compiler that this type has a vtable pointer in its layout.
 	/// Do not use.

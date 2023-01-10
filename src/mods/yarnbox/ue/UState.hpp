@@ -4,7 +4,9 @@
 
 namespace ue {
 
-class UState : public UStruct
-{};
+struct UState : UStruct
+{
+	static struct UClass* StaticClass();
+};
 
 }

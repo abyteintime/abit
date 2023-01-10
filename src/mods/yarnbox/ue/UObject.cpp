@@ -2,6 +2,8 @@
 
 #include "abit/procs/UObject.hpp"
 
+#include "yarnbox/ue/UClass.hpp"
+
 using namespace ue;
 
 struct UClass*
@@ -22,6 +24,12 @@ UObject::GetName() const
 	FString name;
 	GetName(name);
 	return name;
+}
+
+bool
+UObject::InstanceOf(UClass* type) const
+{
+	return objectClass->Is(type);
 }
 
 void

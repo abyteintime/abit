@@ -4,26 +4,22 @@
 		{
 			"type": "Replacement",
 			"comment": "Patch OnOpenHUD with DanceOnly=true",
-			"class": "YbTest_PnTPatch",
-			"function": "OnOpenHUD"
+			"chunk": "YarnboxTesting.YbTest_PnTPatch.OnOpenHUD"
 		},
 		{
 			"type": "Replacement",
 			"comment": "Patch Render with DanceOnly=true",
-			"class": "YbTest_PnTPatch",
-			"function": "Render"
+			"chunk": "YarnboxTesting.YbTest_PnTPatch.Render"
 		},
 		{
 			"type": "Replacement",
 			"comment": "Patch AdvanceMessage with DanceOnly=true",
-			"class": "YbTest_PnTPatch",
-			"function": "AdvanceMessage"
+			"chunk": "YarnboxTesting.YbTest_PnTPatch.AdvanceMessage"
 		},
 		{
 			"type": "Replacement",
 			"comment": "Allow camera movement in Peace and Tranquility",
-			"class": "YbTest_PnTPatch",
-			"function": "DisablesCameraMovement"
+			"chunk": "YarnboxTesting.YbTest_PnTPatch.DisablesCameraMovement"
 		}
 	]
 }

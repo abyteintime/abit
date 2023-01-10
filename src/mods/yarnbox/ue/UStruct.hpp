@@ -25,6 +25,14 @@ public:
 	ViewIntoTArray<uint8_t> bytecode;
 
 	static struct UClass* StaticClass();
+
+	bool Is(UStruct* other) const;
+
+	template<typename T>
+	bool Is() const
+	{
+		return Is(T::StaticClass());
+	}
 };
 
 }

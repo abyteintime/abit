@@ -15,8 +15,7 @@ struct Patch
 {
 	struct Replacement
 	{
-		std::string className;
-		std::string function;
+		std::string chunk;
 	};
 
 	struct Injection

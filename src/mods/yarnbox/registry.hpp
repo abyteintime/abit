@@ -5,35 +5,39 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "abit/map.hpp"
+
 #include "yarnbox/ue/UClass.hpp"
 #include "yarnbox/ue/UFunction.hpp"
 
 namespace yarn {
 
-struct Function
+struct Chunk
 {
-	ue::UFunction* unreal;
-};
+	ue::UStruct* ustruct;
 
-struct Class
-{
-	ue::UClass* unreal;
-	std::unordered_map<std::string, Function> functions;
+	std::string pathName;
+	std::string name;
+	abit::AsciiCaseInsensitiveMap<std::shared_ptr<Chunk>> functions;
+
+	Chunk(ue::UStruct* ustruct);
+
+	static std::string GetPathName(ue::UStruct* ustruct);
 };
 
 class Registry
 {
-	std::unordered_map<std::string, std::shared_ptr<Class>> classesByName;
-	std::unordered_map<ue::UClass*, std::shared_ptr<Class>> classesByPointer;
+	abit::AsciiCaseInsensitiveMap<std::shared_ptr<Chunk>> chunksByName;
+	std::unordered_map<ue::UStruct*, std::shared_ptr<Chunk>> chunksByPointer;
 
 public:
-	void RegisterClass(ue::UClass* uclass);
-	bool IsClassRegistered(ue::UClass* uclass);
-	void RegisterFunction(Function&& function);
+	std::shared_ptr<Chunk> RegisterChunk(std::shared_ptr<Chunk>&& chunk);
 
-	const Class* GetClassByName(const std::string& name) const;
-	const Class* GetClassByPointer(ue::UClass* pointer) const;
-	Class* GetClassByPointer(ue::UClass* pointer);
+	const Chunk* GetChunkByName(const std::string& name) const;
+	Chunk* GetChunkByName(const std::string& name);
+
+	const Chunk* GetChunkByPointer(ue::UStruct* pointer) const;
+	Chunk* GetChunkByPointer(ue::UStruct* pointer);
 };
 
 }
