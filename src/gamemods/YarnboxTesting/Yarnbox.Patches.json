@@ -1,25 +1,44 @@
 {
 	"version": 1,
-	"patches": [
-		{
-			"type": "Replacement",
-			"comment": "Patch OnOpenHUD with DanceOnly=true",
-			"chunk": "YarnboxTesting.YbTest_PnTPatch.OnOpenHUD"
-		},
-		{
-			"type": "Replacement",
-			"comment": "Patch Render with DanceOnly=true",
-			"chunk": "YarnboxTesting.YbTest_PnTPatch.Render"
-		},
-		{
-			"type": "Replacement",
-			"comment": "Patch AdvanceMessage with DanceOnly=true",
-			"chunk": "YarnboxTesting.YbTest_PnTPatch.AdvanceMessage"
-		},
-		{
-			"type": "Replacement",
-			"comment": "Allow camera movement in Peace and Tranquility",
-			"chunk": "YarnboxTesting.YbTest_PnTPatch.DisablesCameraMovement"
-		}
-	]
+	"patches": [{
+		"type": "Injection",
+		"comment": "Take control over DanceOnly flag",
+		"inject": [{
+			"into": "HatinTimeGameContent.Hat_HUDMenu_HatKidDance.OnOpenHUD",
+			"select": [{
+				"opcode": "False",
+				"which": [0],
+				"searchFrom": "end"
+			}],
+			"do": "Replace",
+			"with": {
+				"type": "StaticFinalFunctionCall",
+				"function": "YarnboxTesting.YbTest_PnTPatch.DoDanceForever"
+			}
+		}, {
+			"into": "HatinTimeGameContent.Hat_HUDMenu_HatKidDance.Render",
+			"select": [{
+				"opcode": "False",
+				"which": [1],
+				"searchFrom": "start"
+			}],
+			"do": "Replace",
+			"with": {
+				"type": "StaticFinalFunctionCall",
+				"function": "YarnboxTesting.YbTest_PnTPatch.DoDanceForever"
+			}
+		}, {
+			"into": "HatinTimeGameContent.Hat_HUDMenu_HatKidDance.AdvanceMessage",
+			"select": [{
+				"opcode": "False",
+				"which": [0],
+				"searchFrom": "start"
+			}],
+			"do": "Replace",
+			"with": {
+				"type": "StaticFinalFunctionCall",
+				"function": "YarnboxTesting.YbTest_PnTPatch.DoDanceForever"
+			}
+		}]
+	}]
 }

@@ -497,7 +497,8 @@ Yarnbox reserves the following otherwise free opcodes for implementing its funct
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
-4039 .. 4093 | Primitive casts | N/A | These are used to simplify the decompiler a bunch, such that the parsing of primitive casts can be done by the
+4050 | `BytecodeTree` | `insns` | The root node in a bytecode tree. Never actually appears in real bytecode.
+4051 .. 4093 | Primitive casts | N/A | These are used to simplify the decompiler a bunch, such that the parsing of primitive casts can be done by the same routines that handle parsing opcodes.
 4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
 4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded.
 

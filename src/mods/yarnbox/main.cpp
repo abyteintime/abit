@@ -56,7 +56,10 @@ UStruct_Serialize(UStruct* self, FArchive* ar)
 	spdlog::trace("  - outer: {:ip}", UObjectFmt{ self->outer });
 
 	if (self->objectClass == UState::StaticClass()) {
-		spdlog::debug("Ignoring state '{}' because modifying states is unsupported"); // TODO?
+		spdlog::debug(
+			L"Ignoring state '{}' because modifying states is unsupported",
+			self->GetName().ToWstringView()
+		); // TODO?
 		return;
 	}
 

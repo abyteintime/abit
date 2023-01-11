@@ -10,6 +10,9 @@
 #include "abit/ue/UClass.hpp"
 #include "abit/ue/UFunction.hpp"
 
+#include "yarnbox/bytecode/jumps.hpp"
+#include "yarnbox/bytecode/tree.hpp"
+
 namespace yarn {
 
 struct Chunk
@@ -20,9 +23,26 @@ struct Chunk
 	std::string name;
 	abit::AsciiCaseInsensitiveMap<std::shared_ptr<Chunk>> functions;
 
+	struct Disassembly
+	{
+		BytecodeTree tree;
+		BytecodeTree::NodeIndex rootNode;
+	};
+
+	struct Analysis
+	{
+		Jumps jumps;
+	};
+
+	std::optional<Disassembly> disassembly;
+	std::optional<Analysis> analysis;
+
 	Chunk(ue::UStruct* ustruct);
 
 	static std::string GetPathName(ue::UStruct* ustruct);
+
+	const Disassembly* GetOrPerformDisassembly();
+	std::pair<const Chunk::Disassembly*, const Chunk::Analysis*> GetOrPerformAnalysis();
 };
 
 class Registry

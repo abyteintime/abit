@@ -1,11 +1,13 @@
 #include "yarnbox/registry.hpp"
 
-#include "abit/loader/logging.hpp"
-
 #include "fmt/core.h"
+
+#include "abit/loader/logging.hpp"
 
 #include "abit/ue/UObject/fmt.hpp"
 #include "abit/ue/cast.hpp"
+
+#include "yarnbox/bytecode/disassembler.hpp"
 
 using namespace yarn;
 using namespace ue;
@@ -32,6 +34,55 @@ std::string
 Chunk::GetPathName(ue::UStruct* ustruct)
 {
 	return GetObjectPathName(ustruct);
+}
+
+const Chunk::Disassembly*
+Chunk::GetOrPerformDisassembly()
+{
+	if (!disassembly.has_value()) {
+		Disassembly disasm;
+		if (Disassembler::IsBytecodeTooLarge(ustruct->bytecode.length)) {
+			spdlog::error(
+				"Cannot disassemble function '{}' because its bytecode is too large ({} > {})",
+				pathName,
+				ustruct->bytecode.length,
+				std::numeric_limits<uint16_t>::max()
+			);
+			return nullptr;
+		}
+		if (std::optional<BytecodeTree::NodeIndex> rootNode =
+				yarn::Disassemble(&ustruct->bytecode[0], ustruct->bytecode.length, disasm.tree)) {
+			disasm.rootNode = *rootNode;
+			this->disassembly = std::move(disasm);
+		} else {
+			spdlog::error(
+				"Function '{}' had errors in its disassembly and will not be patchable", pathName
+			);
+		}
+	}
+	return disassembly.has_value() ? &disassembly.value() : nullptr;
+}
+
+std::pair<const Chunk::Disassembly*, const Chunk::Analysis*>
+Chunk::GetOrPerformAnalysis()
+{
+	if (!analysis.has_value()) {
+		if (const Disassembly* disasm = GetOrPerformDisassembly()) {
+			Analysis analysis;
+			analysis.jumps.Analyze(disasm->tree, disasm->rootNode);
+			this->analysis = std::move(analysis);
+		} else {
+			spdlog::error(
+				"Cannot analyze function '{}' for patching because its bytecode tree is not "
+				"available",
+				pathName
+			);
+		}
+	}
+	return std::make_pair(
+		disassembly.has_value() ? &disassembly.value() : nullptr,
+		analysis.has_value() ? &analysis.value() : nullptr
+	);
 }
 
 std::shared_ptr<Chunk>

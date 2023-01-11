@@ -9,6 +9,8 @@
 #include "abit/error.hpp"
 #include "abit/loader/logging.hpp"
 
+#include "yarnbox/bytecode/opcode.hpp"
+
 using namespace yarn;
 
 using Json = nlohmann::json;
@@ -25,6 +27,81 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 	}
 );
 
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	Injection::Action,
+	{
+		{ Injection::Action::Prepend, "Prepend" },
+		{ Injection::Action::Append, "Append" },
+		{ Injection::Action::Replace, "Replace" },
+		{ Injection::Action::Insert, "Insert" },
+	}
+);
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	Injection::OpcodeQuery::SearchFrom,
+	{
+		{ Injection::OpcodeQuery::SearchFrom::Start, "Start" },
+		{ Injection::OpcodeQuery::SearchFrom::End, "End" },
+	}
+);
+
+#define YARN__EXPAND_OPCODE_AS_JSON_SERIALIZE_ENUM_PAIRS(Name, Index) { Opcode::Name, #Name },
+
+NLOHMANN_JSON_SERIALIZE_ENUM(
+	Opcode,
+	// This might be a bit slow... does C++ have an efficient way of generating a trie of these, or
+	// something? Maybe this should be a hash map?
+	{ YARN_X_OPCODES(YARN__EXPAND_OPCODE_AS_JSON_SERIALIZE_ENUM_PAIRS) }
+)
+
+void
+from_json(const Json& json, Injection::OpcodeQuery& query)
+{
+	json.at("opcode").get_to(query.opcode);
+	if (json.at("which") == "all") {
+		query.which = Injection::OpcodeQuery::AllOccurrences{};
+	} else {
+		std::vector<uint32_t> indices;
+		json.at("which").get_to(indices);
+		query.which = std::move(indices);
+	}
+	json.at("searchFrom").get_to(query.searchFrom);
+}
+
+void
+from_json(const Json& json, Injection::Query& query)
+{
+	if (json == "head") {
+		query = Injection::HeadQuery{};
+	} else {
+		Injection::OpcodeQuery opcodeQuery;
+		json.get_to(opcodeQuery.opcode);
+		query = std::move(opcodeQuery);
+	}
+}
+
+void
+from_json(const Json& json, Injection::CodeGen& codegen)
+{
+	std::string type;
+	json.at("type").get_to(type);
+
+	if (type == "StaticFinalFunctionCall") {
+		Injection::StaticFinalFunctionCall cg;
+		json.at("function").get_to(cg.function);
+		codegen = std::move(cg);
+	}
+}
+
+void
+from_json(const Json& json, Injection& injection)
+{
+	json.at("into").get_to(injection.into);
+	json.at("select").get_to(injection.select);
+	json.at("do").get_to(injection.action);
+	json.at("with").get_to(injection.with);
+}
+
 }
 
 static Patch
@@ -38,11 +115,13 @@ PatchFromJson(const Json& json, uint32_t version)
 		case PatchType::Replacement: {
 			Patch::Replacement replacement;
 			json.at("chunk").get_to(replacement.chunk);
-			patch.data = replacement;
+			patch.data = std::move(replacement);
 			break;
 		}
 		case PatchType::Injection:
-			spdlog::error("Injection-type patches are yet to be specified and implemented");
+			Patch::Injection injection;
+			json.at("inject").get_to(injection.inject);
+			patch.data = std::move(injection);
 			break;
 	}
 

@@ -215,3 +215,24 @@ Disassembler::Stats::ComputeSummary()
 
 	return summary;
 }
+
+std::optional<NodeIndex>
+yarn::Disassemble(uint8_t* bytecode, uint16_t length, BytecodeTree& outTree)
+{
+	BytecodeTree tree;
+
+	Disassembler disassembler{ bytecode, length, tree };
+	std::vector<uint64_t> rootNodeChildren;
+	while (!disassembler.AtEnd()) {
+		BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
+		if (disassembler.ShouldStopDisassembling()) {
+			return std::nullopt;
+		}
+		rootNodeChildren.push_back(static_cast<uint64_t>(nodeIndex));
+	}
+
+	DataIndex rootNodeVector = tree.AppendDataFromVector(rootNodeChildren);
+	return tree.AppendNode(
+		{ { 0, static_cast<uint16_t>(length - 1) }, Opcode::BytecodeTree, rootNodeVector }
+	);
+}

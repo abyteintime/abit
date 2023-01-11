@@ -71,21 +71,18 @@ Injections use `Injection`-type entries, like so:
     "type": "Injection",
     "comment": "Makes a ligma joke with your hats",
 
-    "class": "Hat_HUDMenu_SwapHat",
-    "function": "RenderWheelItem",
-
     "injections": [{
-      "target": {
-        "type": "FunctionCall",
+      "in": "HatinTimeGame.Hat_HUDMenu.RenderBorderedText",
+      "select": [{
+        "opcode": "VirtualFunction",
         "occurrences": "all",
-        "functionClass": "Hat_HUDMenu",
-        "function": "RenderBorderedText"
-      },
+        "filter": [{ "name": "RenderBorderedText" }]
+      }],
       "operation": {
         "type": "Replace",
-        "toClass": "MyMod_Ligma",
-        "toFunction": "RenderBorderedText"
-      },
+        "with": "FinalFunction",
+        "": ""
+      }
     }]
   }
 ]

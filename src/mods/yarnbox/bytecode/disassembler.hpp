@@ -111,4 +111,8 @@ private:
 	InterpretPrimitive(Opcode contextOpcode, size_t contextIp, Primitive primitive);
 };
 
+/// Disassembles bytecode into a `BytecodeTree` root node.
+std::optional<BytecodeTree::NodeIndex>
+Disassemble(uint8_t* bytecode, uint16_t length, BytecodeTree& outTree);
+
 }

@@ -312,6 +312,7 @@ namespace yarn {
 	EXPAND(Actor_MoveSmooth, 3969) \
 	EXPAND(Actor_SetPhysics, 3970) \
 	EXPAND(Actor_AutonomousPhysics, 3971) \
+	EXPAND(BytecodeTree, 4050) \
 	EXPAND(FlattenedPrimitiveCast, 4051) \
 	EXPAND(OutOfBounds, 4094) \
 	EXPAND(Unknown, 4095)

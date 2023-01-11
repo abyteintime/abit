@@ -2,6 +2,7 @@ set(YARNBOX_SOURCES
 	"bytecode/disassembler.cpp"
 	"bytecode/dumper.cpp"
 	"bytecode/encoding.cpp"
+	"bytecode/jumps.cpp"
 	"bytecode/opcode.cpp"
 	"bytecode/tree.cpp"
 
