@@ -12,12 +12,14 @@ Yarnbox needs to know which functions to apply patches to, and that is done usin
 `Yarnbox.Patches.json` file inside the mod's directory.
 
 The overall file structure is as follows:
+
 ```json
 {
   "version": 1,
   "patches": []
 }
 ```
+
 The version number will be incremented if any breaking changes are made. Yarnbox will do its best
 to maintain backwards compatibility of this file but warnings may be emitted during mod loading if
 a mod built for an older version of Yarnbox is loaded into the game. If certain features change in
@@ -26,29 +28,81 @@ a backwards-incompatible way, Yarnbox will not load the mod's patches and will e
 The paragraphs below refer solely to the `patches` array; read the JSON examples as if they describe
 only that array.
 
+## Chunks
+
+Before we get started with the dark magic of patching, we first need to understand what it is that
+we're patching in the first place.
+
+Unreal Engine uses a rather peculiar class hierarchy in its reflection system. The base class of
+all things executable is `UStruct`, and there are two types of code chunks: `UFunction` and
+`UState`. Technically speaking there's also `UClass`, but classes never contain bytecode on their
+own.
+
+A `UFunction` represents a function, declared like so in UnrealScript:
+
+```unrealscript
+function Example()
+{
+  // function code goes here
+}
+```
+
+This class is also used for `event`s, since they're essentially functions that are called from C++.
+
+A `UState` represents a state, declared as follows in UnrealScript:
+
+```unrealscript
+state Walking
+{
+  // state code goes here
+}
+```
+
+You can refer to the [UnrealScript reference](https://docs.unrealengine.com/udk/Three/UnrealScriptReference.html)
+for more details on how these work.
+
+Each `UStruct` that is detected by Yarnbox is saved into a registry, and can be later recalled using
+its **path name**. The path name is determined by walking the outer object chain. In reality, this
+means that path names can be one of four things:
+
+- `Package.Class`
+- `Package.Class.Function`
+- `Package.Class.Function.State`
+- `Package.Class.Function.State.StateFunction`
+
+For example, the path name for the player pawn class is `HatinTimeGameContent.Hat_Player`.
+The path name of the player pawn class's Tick function is `HatinTimeGameContent.Hat_Player.Tick`.
+
+Each piece of bytecode collected into the registry like this is called a **chunk**. Each chunk
+contains a reference to its corresponding `UStruct` instance, as well as bytecode disassembly and
+analysis data. This data is produced on-demand for injection patches.
+
 ## Replacements
 
 Replacements are the simplest type of patch. They replace a function's bytecode completely
 with the bytecode of a different, but compatible function. Replacements are specified using
 `Replacement`-type entries inside `Yarnbox.Patches.json`, and look like so:
+
 ```json
 [
   {
     "type": "Replacement",
     "comment": "Let the player move in the Peace and Tranquility menu",
-    "class": "MyMod_PnTReplacements",
-    "function": "DisablesMovement"
+    "chunk": "MyMod.MyMod_PnTReplacements.DisablesMovement",
   }
 ]
 ```
 
-The specified `class` must extend the class it wishes to replace functions in. For example, to
-modify the Peace and Tranquility menu, we make the class extend `Hat_HUDMenu_HatKidDance`:
+The specified `chunk` must be a function in a class that extends the base class the function is
+being replaced in. For example, for `MyMod_PntReplacements` to contain replacements for
+`Hat_HUDMenu_HatKidDance`, we make it extend that class:
+
 ```unrealscript
 class MyMod_PnTReplacements extends Hat_HUDMenu_HatKidDance;
 ```
 
 The name of the replaced function should be the same inside the class containing the replacement.
+
 ```unrealscript
 function bool DisablesMovement(HUD H)
 {
@@ -65,76 +119,113 @@ Injections are a more complex type of patch; instead of replacing a function com
 insert bytecode into it.
 
 Injections use `Injection`-type entries, like so:
+
 ```json
 [
   {
     "type": "Injection",
-    "comment": "Makes a ligma joke with your hats",
-
-    "injections": [{
-      "in": "HatinTimeGame.Hat_HUDMenu.RenderBorderedText",
-      "select": [{
-        "opcode": "VirtualFunction",
-        "occurrences": "all",
-        "filter": [{ "name": "RenderBorderedText" }]
-      }],
-      "operation": {
-        "type": "Replace",
-        "with": "FinalFunction",
-        "": ""
-      }
-    }]
+    "comment": "Injects into some game code",
+    "inject": [...]
   }
 ]
 ```
 
-The injection above will replace all occurrences of the function call to
-`Hat_HUDMenu.RenderBorderedText` with our evil `MyMod_Ligma.RenderBorderedText`, which subjects the
-player to infinite ligma jokes:
-```unrealscript
-class MyMod_Ligma extends Object;
+The `inject` array specifies a list of injections to apply.
+Each injection is an object with the following fields:
 
-static function RenderBorderedText(
-  HUD H,
-  Hat_HUDElement el,
-  string msg,
-  float posx,
-  float posy,
-  float textscale,
-  optional TextAlign Alignment,
-  optional float border_size = 2,
-  optional Color BorderColor,
-  optional float verticalscale = -1,
-  optional float ShadowAlpha = 1,
-  optional float BorderQuality = 1
-)
+```json
 {
-  class'Hat_HUDMenu'.static.RenderBorderedText(
-    H,
-    el,
-    "Ligma Hat",
-    posx,
-    posy,
-    textscale,
-    Alignment,
-    border_size,
-    BorderColor,
-    verticalscale,
-    ShadowAlpha,
-    BorderQuality
-  );
+  "into": "Chunk.To.Inject.Into",
+  "select": [...],
+  "action": "Insert",
+  "with": {...}
 }
 ```
 
-The exact details of what injections will be available are to be determined. This is just a sample
-of what Yarnbox plans to allow in terms of injection capabilities. For example, more targets will
-be available, such as injecting at the beginning or before all `return`s in a function, etc.
+Injections are applied in sequence from top to bottom.
 
-Injections are inherently dependent on Yarnbox's disassembler and will not be available for
-functions that the disassembler cannot disassemble completely. This is because inserting bytecode
-in the middle of a function may screw up jump offsets, thus we need to know the locations of _all_
-jumps without exceptions to apply injections properly, but with how UnrealScript is implemented
-with its nested variable-length instructions this is impossible to do without disassembling
-everything accurately.
+### Queries
 
-What I'm saying is: Expect bugs.
+Each element in the `select` array is a query. A query is `"head"`, or an _opcode query_ object:
+
+```json
+{
+  "opcode": "OpcodeToSearchFor",
+  "which": [0, 1, 2],
+  "searchFrom": "Start"
+}
+```
+
+Each query produces zero or more `start..end` spans that are then used by the injection action
+(described later.) A span can be _zero-sized_, which means that its start is the same as its end,
+and it effectively points to a single point in the bytecode.
+
+The `"head"` query produces a zero-sized span which points to the beginning of the chunk, right
+after the function arguments.
+
+The opcode query searches for occurrences of the given opcode within the chunk.
+
+- `opcode` defines which opcode should be searched for.
+- `which` defines which occurrences should be targeted, and can be `"all"` to target all occurrences. The numbers in the array can be negative, which means that
+occurrences will be counted from the end.
+- `searchFrom` defines the direction to perform the search in - `"Start"` searches from the first opcode in the chunk to the last, and `"End"` from the last to the first.
+
+If an injection produces zero queries, a warning is emitted to signal that the patch effectively
+did not get applied to anything.
+
+### Actions
+
+Once one or more bytecode spans are produced by queries, the patcher performs an action.
+For non zero-sized spans, this action can be one of:
+
+- `"Prepend"` - prepend bytecode before the span's start
+- `"Append"` - append bytecode after the span's end
+- `"Replace"` - replace the entire span with other bytecode
+
+For zero-sized spans, there is only one action allowed - `"Insert"`, since none of the other
+existing actions makes sense in that case.
+However, `"Prepend"` and `"Append"` will be allowed if the injection has more queries than just
+a `"head"` query.
+
+### Bytecode generation
+
+Last but not least, there's the `with` field. This field specifies what kind of bytecode to
+generate.
+
+#### `StaticFinalFunctionCall`
+
+`StaticFinalFunctionCall` generates, as the name suggests, a call to a static final function.
+
+```json
+{
+  "type": "StaticFinalFunctionCall",
+  "function": "Your.Function.To.Call"
+}
+```
+
+### Injections are transactions
+
+The golden rule of all injections is that an `Injection`-type patch is like a transaction - it's a
+single atomic unit that must be applied in its entirety. If one injection of a single
+`Injection`-type patch fails to apply, then _no_ injections from the same patch will be applied.
+This can (and should) be used to make sure that functionality does not stay broken if some injection
+fails.
+
+### Safety first
+
+Injections are not checked for correctness besides a few basic checks at the moment. Extra
+validation may get added in the future, but in the meantime it is largely the modder's job to ensure
+the generated bytecode is type-safe.
+
+While Yarnbox will refuse to inject bytecode that doesn't make sense at least _structurally_,
+it does not check the _semantics_ of the injections it produces. For example, it will not prevent
+you from creating an injection that replaces an expression producing a `bool` with a call to a
+function that produces a `string`. These kinds of type-unsafe patches in fact trigger undefined
+behavior within the game's C++ code, so be ready for crashes if you perform this kind of
+tomfoolery.
+
+### Example injection
+
+For a complete example of how injections can be used to modify the game, please take a look at the
+the PeacefulAndTranquilForever mod, which patches the Peace and Tranquility screen to play the
+"No one is around to help" animation forever. It's a softlock, but at least it's a fun one!
