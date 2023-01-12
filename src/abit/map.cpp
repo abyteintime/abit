@@ -1,5 +1,6 @@
 #include "abit/map.hpp"
 
+#include "abit/fnv.hpp"
 #include "abit/string.hpp"
 
 using namespace abit;
@@ -7,15 +8,12 @@ using namespace abit;
 size_t
 AsciiCaseInsensitiveHash::operator()(const std::string& s) const
 {
-	// FNV-1a hash function.
-	// http://www.isthe.com/chongo/tech/comp/fnv/index.html
-	size_t h = 14695981039346656037ULL;
+	Fnv1a64 hasher;
 	for (char ch : s) {
-		size_t c = static_cast<size_t>(CharToLowerAscii(ch));
-		h ^= c;
-		h *= 1099511628211ULL;
+		uint64_t c = static_cast<uint64_t>(CharToLowerAscii(ch));
+		hasher.Mix(c);
 	}
-	return h;
+	return static_cast<size_t>(hasher.hash);
 }
 
 bool
