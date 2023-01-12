@@ -1,6 +1,11 @@
-# How to read this table
+# Opcodes
+
+This document outlines the Unreal VM's supported list of opcodes and their encoding.
+
+## How to read this table
 
 The columns are:
+
 - **Index** - index in the `GNatives` array.
 - **Name** - name of the `exec` function corresponding to the opcode, suffixed with `_?` if the exact name is not known.
   - The name can be namespaced, like `Actor.MoveTo`, if the `exec` function lives inside a class
@@ -9,9 +14,10 @@ The columns are:
 - **Operands** - how the opcode's operands are encoded in the bytecode.
   Lack of operands is denoted with a dash `-`, and operands that haven't been reversed yet are denoted with the word `unknown`.
 
-## Encoding
+### Encoding
 
 This document PEG-like language to describe how instructions are encoded formally.
+
 - `123` - match an exact byte
 - `{}` - match a byte from a given set. Possible elements are:
   - `123` - a single byte
@@ -28,7 +34,8 @@ This document PEG-like language to describe how instructions are encoded formall
 - `opcode.X` - match the opcode `X`
 
 Available rules are:
-```
+
+```peg
 byte <- {0 .. 255}
 
 u8 <- byte
@@ -52,9 +59,10 @@ insn <- opcode operands
 
 fnargs <- (!opcode.EndFunctionParams insn*) opcode.EndFunctionParms DebugInfo?
 ```
+
 Rules may capture variables which can be referred to in the description, with the syntax `variable@rule`.
 
-# Disclaimer
+## Disclaimer
 
 The following table may be incooabsmplete. Actual bytecode may contain instructions that are not (yet)
 in this table; ie. instructions that are registered dynamically and do not appear in Ghidra.
@@ -62,7 +70,7 @@ in this table; ie. instructions that are registered dynamically and do not appea
 As mentioned before, the actual names of certain dynamically registered instructions may be my best
 guesses. These names are suffixed with `_?`.
 
-# Instructions
+## Instructions
 
 Index | Name | Operands | Description
 :-: | --- | --- | ---
@@ -411,7 +419,7 @@ Index | Name | Operands | Description
 3971 | `Actor.AutonomousPhysics` | unknown | -
 3972 .. 4093 | - | - | Hole.
 
-## Notes
+### Notes
 
 - Instructions with the description "invalid opcode" will cause deserialization to fail with the
   error message `Bad expr token %02x`, with the opcode as its format argument.
@@ -422,38 +430,44 @@ Index | Name | Operands | Description
 - Unary operators seem to have a `u8` sentinel that is not used nor checked in any way.
 - `Iterator` is really weird: `UObject::execIterator` is, as far as I can tell, an empty function,
   which makes zero sense, since `UStruct::SerializeExpr` does some stuff to read an instruction and
-  a 16-byte value. But the opcode clearly _does work_, the question is _how????_
+  a 16-byte value. But the opcode clearly *does work*, the question is *how????*
 - Opcodes defined on `Actor` and other non-`Object` classes are not described and will not be
   described; please refer to the documentation comments in Actor.uc (if they exist for your
   particular function, ha ha ha!)
 
-### Function parameters
+#### Function parameters
 
 The evaluation of function parameters is a little complicated, because function parameters in
 UnrealScript can be optional. Those are declared like so:
+
 ```unrealscript
 function OptionalParmsExample(optional int x = 1, optional int y = x + 2)
 {}
 ```
-Note that the default value for a parameter can be _any expression_. I haven't verified if it lets
-you refer to other parameters, but my suspicion given what I've reversed so far is that it _should_
+
+Note that the default value for a parameter can be *any expression*. I haven't verified if it lets
+you refer to other parameters, but my suspicion given what I've reversed so far is that it *should*
 be possible.
 
 Then in function calls you can omit arguments, like so:
+
 ```unrealscript
 function OptionalArgsExample()
 {
     OptionalParmsExample(,);
 }
 ```
+
 The syntax is quite ugly and in my opinion totally unreadable, but it does the job.
 
 Now onto the bytecode! The base parsing rule for function arguments is `fnargs`, which is shared
 between all types of functions. As a refresher, here it is in all its glory:
-```
+
+```peg
 endfnargs <- 22  // This is the EndFunctionParms opcode. Which is a misnomer, by the way.
 fnargs <- (!endfnargs insn)* endfnargs DebugInfo?
 ```
+
 Function call instructions are structured like `opcode fnexpr fnargs`. `fnexpr` is specific to
 each function call; see the **Operands** column of each `*Function` instruction for reference.
 
@@ -464,25 +478,29 @@ Whenever this flag is set, the corresponding parameter's `DefaultParmValue` inst
 zero or more instructions to initialize the parameter. If this flag is not set however, the entire
 section that initializes the parameter is skipped over.
 
-## Switch
+### Switch
 
 `Switch` is quite a complicated opcode, so it's getting its own section here.
 
 A minimal, unstructured representation for a switch might look as follows:
-```
+
+```peg
 operands.Switch <- property@obj type@u8 value@insn
 operands.Case <- jump@oabs reference@insn
 ```
+
 This is enough for deserialization and basic use, but it's important to understand that the `Switch`
 instruction has special behavior for the `Case` opcode.
 
 A more structured representation accounting for this might look as follows:
-```
+
+```peg
 operands.Case <- jump@oabs reference@insn
 lastcase <- opcode.Case 255 255
 
 operands.Switch <- property@obj type@u8 value@insn ((!lastcase Case)+ insn*) lastcase
 ```
+
 For simplicity's sake, Yarnbox chooses the simpler, unstructured representation, as the latter would
 require a specialized parsing primitive, which increases complexity without good reason.
 
@@ -491,7 +509,7 @@ whose `jump` is equal to `0xFFFF`, it evaluates the `Case`'s `reference` operand
 against the `Switch` `value` byte-wise. If the values are not the same, the next case is jumped to,
 whose location is specified by the `Case`'s `jump` operand.
 
-## Yarnbox extensions
+### Yarnbox extensions
 
 Yarnbox reserves the following otherwise free opcodes for implementing its functionality:
 
@@ -502,7 +520,7 @@ Index | Name | Operands | Description
 4094 | `OutOfBounds` | N/A | Marker emitted by the disassembler in case it reads an out-of-bounds opcode.
 4095 | `Unknown` | N/A | Marker emitted by the disassembler when it doesn't know how a certain opcode is encoded.
 
-# Flags
+## Flags
 
 The VM keeps a bunch of flags in its global state, inside the `GRuntimeUCFlags` global variable.
 Here's a list of all known flags. The names are not accurate to how they may appear in the Unreal
@@ -514,7 +532,7 @@ Bit | Name | Description
 1 | Value Omitted | Unset for each parameter in a function; may be set by arguments that do not provide a value through the `EmptyParmValue` instruction.
 2 | unknown | This is set by `StructMember` and only ever used by `HatLogRedirector`. I'm guessing it may be Hat in Time-specific.
 
-# Primitive casts
+## Primitive casts
 
 Most primitive casts' operands are encoded as `value@insn`, where `value` is the value to perform the cast on. Exceptions are described in the **Comment** column.
 
