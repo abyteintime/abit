@@ -12,3 +12,6 @@ BreakConstructorInitializers: BeforeComma
 AllowAllArgumentsOnNextLine: true
 AccessModifierOffset: -4
 ConstructorInitializerIndentWidth: 4
+AlignOperands: DontAlign
+BreakBeforeBinaryOperators: All
+BreakBeforeTernaryOperators: true

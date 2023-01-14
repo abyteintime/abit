@@ -7,16 +7,17 @@
 
 namespace ue {
 
-template<typename Array, typename Element>
+template<typename ArrayPtr, typename ElementPtr>
 struct ArrayRange
 {
-	const Array* view;
+	ArrayPtr view;
 
 	struct Cursor
 	{
-		const Element* ptr;
+		ElementPtr ptr;
 
-		inline const Element& operator*() const { return *ptr; }
+		inline const auto& operator*() const { return *ptr; }
+		inline auto& operator*() { return *ptr; }
 
 		inline Cursor& operator++()
 		{
@@ -66,11 +67,17 @@ struct ViewIntoTArray
 		}
 	}
 
-	using RangeType = ArrayRange<ViewIntoTArray<T>, T>;
-	inline RangeType Range() const { return { this }; }
+	using ConstRangeType = ArrayRange<const ViewIntoTArray<T>*, const T*>;
+	inline ConstRangeType Range() const { return { this }; }
 
-	inline typename RangeType::Cursor begin() const { return Range().begin(); }
-	inline typename RangeType::Cursor end() const { return Range().end(); }
+	inline typename ConstRangeType::Cursor begin() const { return Range().begin(); }
+	inline typename ConstRangeType::Cursor end() const { return Range().end(); }
+
+	using MutableRangeType = ArrayRange<ViewIntoTArray<T>*, T*>;
+	inline MutableRangeType Range() { return { this }; }
+
+	inline typename MutableRangeType::Cursor begin() { return Range().begin(); }
+	inline typename MutableRangeType::Cursor end() { return Range().end(); }
 
 private:
 	ViewIntoTArray() {}
@@ -85,7 +92,25 @@ struct TArray
 	int32_t capacity = 0;
 
 	TArray() {}
-	~TArray() { appFree(dataPtr); }
+
+	~TArray()
+	{
+		for (T& element : *this) {
+			element.~T();
+		}
+		appFree(dataPtr);
+	}
+
+	TArray(const ViewIntoTArray<T>& view)
+		: TArray()
+	{
+		length = view.length;
+		capacity = view.length;
+		dataPtr = reinterpret_cast<T*>(appMalloc(capacity * sizeof(T)));
+		for (int32_t i = 0; i < view.length; ++i) {
+			dataPtr[i] = view[i];
+		}
+	}
 
 	TArray(TArray<T>&& other)
 	{
@@ -100,11 +125,31 @@ struct TArray
 	const T& operator[](size_t i) const { return dataPtr[i]; }
 	T& operator[](size_t i) { return dataPtr[i]; }
 
-	using RangeType = ArrayRange<TArray<T>, T>;
-	inline RangeType Range() const { return { this }; }
+	void Append(T&& element)
+	{
+		if (dataPtr == nullptr) {
+			capacity = 8;
+			dataPtr = reinterpret_cast<T*>(appMalloc(capacity * sizeof(T)));
+		}
+		if (length + 1 > capacity) {
+			capacity *= 2;
+			dataPtr = reinterpret_cast<T*>(appRealloc(dataPtr, capacity * sizeof(T)));
+		}
+		dataPtr[length] = std::move(element);
+		length += 1;
+	}
 
-	inline typename RangeType::Cursor begin() const { return Range().begin(); }
-	inline typename RangeType::Cursor end() const { return Range().end(); }
+	using ConstRangeType = ArrayRange<const TArray<T>*, const T*>;
+	inline ConstRangeType Range() const { return { this }; }
+
+	inline typename ConstRangeType::Cursor begin() const { return Range().begin(); }
+	inline typename ConstRangeType::Cursor end() const { return Range().end(); }
+
+	using MutableRangeType = ArrayRange<TArray<T>*, T*>;
+	inline MutableRangeType Range() { return { this }; }
+
+	inline typename MutableRangeType::Cursor begin() { return Range().begin(); }
+	inline typename MutableRangeType::Cursor end() { return Range().end(); }
 };
 
 }

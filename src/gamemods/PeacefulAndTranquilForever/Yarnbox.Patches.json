@@ -7,11 +7,10 @@
 			"into": "HatinTimeGameContent.Hat_HUDMenu_HatKidDance.OnOpenHUD",
 			"select": [{
 				"opcode": "False",
-				"which": [0],
-				"searchFrom": "End"
+				"which": [-1],
+				"pick": "Span"
 			}],
-			"do": "Replace",
-			"with": {
+			"place": {
 				"type": "StaticFinalFunctionCall",
 				"function": "PeacefulAndTranquilForever.PnTF_Injections.DoDanceForever"
 			}
@@ -20,10 +19,9 @@
 			"select": [{
 				"opcode": "False",
 				"which": [1],
-				"searchFrom": "Start"
+				"pick": "Span"
 			}],
-			"do": "Replace",
-			"with": {
+			"place": {
 				"type": "StaticFinalFunctionCall",
 				"function": "PeacefulAndTranquilForever.PnTF_Injections.DoDanceForever"
 			}
@@ -32,10 +30,9 @@
 			"select": [{
 				"opcode": "False",
 				"which": [0],
-				"searchFrom": "Start"
+				"pick": "Span"
 			}],
-			"do": "Replace",
-			"with": {
+			"place": {
 				"type": "StaticFinalFunctionCall",
 				"function": "PeacefulAndTranquilForever.PnTF_Injections.DoDanceForever"
 			}

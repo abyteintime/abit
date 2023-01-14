@@ -38,7 +38,7 @@ PrimitiveHasDisplay(primitive::Type prim)
 static void
 DumpPrimRec(
 	const BytecodeTree& tree,
-	BytecodeTree::Span span,
+	BytecodeSpan span,
 	Primitive prim,
 	uint64_t value,
 	size_t level,
@@ -130,11 +130,32 @@ DumpPrimRec(
 				}
 
 				case KOffsetAbs:
-					fmt::format_to(out, "i(oabs) {:#x}\n", static_cast<uint16_t>(value));
+					fmt::format_to(out, "i(oabs) --> {:#x}\n", static_cast<uint16_t>(value));
 					break;
-				case KOffsetRel:
-					fmt::format_to(out, "i(orel) {:#x}\n", static_cast<int16_t>(value));
+				case KOffsetRel0:
+				case KOffsetRel1:
+				case KOffsetRel2:
+				case KOffsetRel3:
+				case KOffsetRel4:
+				case KOffsetRel5:
+				case KOffsetRel6:
+				case KOffsetRel7:
+				case KOffsetRel8:
+				case KOffsetRel9:
+				case KOffsetRel10:
+				case KOffsetRel11:
+				case KOffsetRel12: {
+					uint16_t jumpReference = static_cast<uint16_t>(prim.arg);
+					int16_t jumpOffset = static_cast<int16_t>(value);
+					fmt::format_to(
+						out,
+						"i(orel+{}) {:+#x} --> {:03x}\n",
+						jumpReference,
+						jumpOffset,
+						span.start + jumpOffset
+					);
 					break;
+				}
 
 				case KName: {
 					FName name = abit::BitCast<FName>(value);
@@ -207,7 +228,7 @@ DumpNodeRec(
 	for (size_t i = 0; i < rule.primsCount; ++i) {
 		Primitive prim = rule.prims[i];
 		uint64_t value = tree.Data(node.data, i);
-		BytecodeTree::Span ip = tree.DataSpan(node.data, i);
+		BytecodeSpan ip = tree.DataSpan(node.data, i);
 		DumpPrimRec(tree, ip, prim, value, level + 1, outString);
 	}
 }

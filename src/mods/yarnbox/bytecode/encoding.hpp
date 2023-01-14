@@ -35,10 +35,31 @@ enum IntKind : uint8_t
 	KFloat,        // Floating-point
 	KPointer,      // Pointer
 	KObject,       // UObject pointer
-	KOffsetAbs,    // Absolute IP offset
-	KOffsetRel,    // Relative IP offset
 	KName,         // FName
+	KOffsetAbs,    // Absolute IP offset
+
+	// Relative IP offset. The number signifies how far from the offset's position the
+	// jump is taken.
+	KOffsetRel0,
+	KOffsetRel1,
+	KOffsetRel2,
+	KOffsetRel3,
+	KOffsetRel4,
+	KOffsetRel5,
+	KOffsetRel6,
+	KOffsetRel7,
+	KOffsetRel8,
+	KOffsetRel9,
+	KOffsetRel10,
+	KOffsetRel11,
+	KOffsetRel12,
 };
+
+static inline bool
+IsOffsetRel(IntKind ik)
+{
+	return ik >= KOffsetRel0 && ik <= KOffsetRel12;
+}
 
 }
 
@@ -84,7 +105,16 @@ constexpr Primitive PPtr = { PU64, KPointer };
 constexpr Primitive PObj = { PU64, KObject };
 constexpr Primitive PName = { PU64, KName };
 constexpr Primitive POAbs = { PU16, KOffsetAbs };
-constexpr Primitive PORel = { PU16, KOffsetRel };
+
+struct PORelType
+{
+	constexpr Primitive operator+(int offset) const
+	{
+		return Primitive{ PU16, static_cast<IntKind>(KOffsetRel0 + offset) };
+	}
+};
+
+constexpr PORelType PORel = PORelType{};
 
 }
 

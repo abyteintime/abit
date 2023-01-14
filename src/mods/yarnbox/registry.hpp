@@ -10,6 +10,7 @@
 #include "abit/ue/UClass.hpp"
 #include "abit/ue/UFunction.hpp"
 
+#include "yarnbox/bytecode/index.hpp"
 #include "yarnbox/bytecode/jumps.hpp"
 #include "yarnbox/bytecode/tree.hpp"
 
@@ -32,6 +33,7 @@ struct Chunk
 	struct Analysis
 	{
 		Jumps jumps;
+		Index index;
 	};
 
 	std::optional<Disassembly> disassembly;

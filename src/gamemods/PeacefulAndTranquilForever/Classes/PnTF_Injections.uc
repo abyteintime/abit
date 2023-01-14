@@ -1,4 +1,4 @@
-class YbTest_PnTPatch extends Hat_HUDMenu_HatKidDance;
+class PnTF_Injections extends Object;
 
 static final function bool DoDanceForever()
 {

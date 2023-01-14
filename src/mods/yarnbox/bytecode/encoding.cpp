@@ -16,7 +16,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Jump) = { POAbs };
 	e.Rule(Opcode::JumpIfNot) = { POAbs, PInsn };
 	e.Rule(Opcode::JumpIfNotEditorOnly) = { POAbs };
-	e.Rule(Opcode::Conditional) = { PInsn, PORel, PInsn, PORel, PInsn };
+	e.Rule(Opcode::Conditional) = { PInsn, PORel + 2, PInsn, PORel + 2, PInsn };
 
 	e.Rule(Opcode::Switch) = { PObj, PU8, PInsn };
 	e.Rule(Opcode::Case) = { POAbs, PInsn };
@@ -97,7 +97,7 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::Not_PreBool) = rFn1;
 
 	// These bool operators are unlike other binary operators because they short-circuit.
-	Rule rShortCircuitingBinaryOp{ PInsn, PSentinel, PORel, PInsn, PSentinel };
+	Rule rShortCircuitingBinaryOp{ PInsn, PSentinel, PORel + 2, PInsn, PSentinel };
 	e.Rule(Opcode::AndAnd_BoolBool) = rShortCircuitingBinaryOp;
 	e.Rule(Opcode::OrOr_BoolBool) = rShortCircuitingBinaryOp;
 
@@ -280,8 +280,8 @@ Encoding yarn::encoding = []() {
 	// Objects
 
 	e.Rule(Opcode::New) = { PInsn, PInsn, PInsn, PInsn, PInsn };
-	e.Rule(Opcode::Context) = { PInsn, PU16, PObj, PU8, PInsn };
-	e.Rule(Opcode::ClassContext) = { PInsn, PU16, PObj, PU8, PInsn };
+	e.Rule(Opcode::Context) = { PInsn, PORel + 12, PObj, PU8, PInsn };
+	e.Rule(Opcode::ClassContext) = { PInsn, PORel + 12, PObj, PU8, PInsn };
 
 	e.Rule(Opcode::EqualEqual_ObjectObject) = rFn2;
 	e.Rule(Opcode::NotEqual_ObjectObject) = rFn2;
@@ -334,17 +334,17 @@ Encoding yarn::encoding = []() {
 	e.Rule(Opcode::DynArrayAddItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::DynArrayInsertItem) = { PInsn, PU16, PInsn, PInsn, PSentinel, PDebugInfo };
 	e.Rule(Opcode::DynArrayRemoveItem) = { PInsn, PU16, PInsn, PSentinel, PDebugInfo };
-	e.Rule(Opcode::DynArrayFind) = { PInsn, PORel, PInsn, PSentinel, PDebugInfo };
-	e.Rule(Opcode::DynArrayFindStruct) = { PInsn, PORel, PInsn, PInsn, PSentinel, PDebugInfo };
-	e.Rule(Opcode::DynArraySort) = { PInsn, PORel, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArrayFind) = { PInsn, PORel + 2, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArrayFindStruct) = { PInsn, PORel + 2, PInsn, PInsn, PSentinel, PDebugInfo };
+	e.Rule(Opcode::DynArraySort) = { PInsn, PORel + 2, PInsn, PSentinel, PDebugInfo };
 
 	// Iterators
 
-	e.Rule(Opcode::Iterator) = { PInsn, PORel };
+	e.Rule(Opcode::Iterator) = { PInsn, POAbs };
 	e.Rule(Opcode::IteratorPop) = { PEmpty };
 	e.Rule(Opcode::Continue) = { PEmpty };
 
-	e.Rule(Opcode::DynArrayIterator) = { PInsn, PInsn, PSentinel, PInsn, PORel };
+	e.Rule(Opcode::DynArrayIterator) = { PInsn, PInsn, PSentinel, PInsn, POAbs };
 
 	// States
 

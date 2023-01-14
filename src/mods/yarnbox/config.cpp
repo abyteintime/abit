@@ -28,20 +28,11 @@ NLOHMANN_JSON_SERIALIZE_ENUM(
 );
 
 NLOHMANN_JSON_SERIALIZE_ENUM(
-	Injection::Action,
+	Injection::OpcodeQuery::Pick,
 	{
-		{ Injection::Action::Prepend, "Prepend" },
-		{ Injection::Action::Append, "Append" },
-		{ Injection::Action::Replace, "Replace" },
-		{ Injection::Action::Insert, "Insert" },
-	}
-);
-
-NLOHMANN_JSON_SERIALIZE_ENUM(
-	Injection::OpcodeQuery::SearchFrom,
-	{
-		{ Injection::OpcodeQuery::SearchFrom::Start, "Start" },
-		{ Injection::OpcodeQuery::SearchFrom::End, "End" },
+		{ Injection::OpcodeQuery::Pick::Span, "Span" },
+		{ Injection::OpcodeQuery::Pick::Start, "Start" },
+		{ Injection::OpcodeQuery::Pick::End, "End" },
 	}
 );
 
@@ -61,23 +52,20 @@ from_json(const Json& json, Injection::OpcodeQuery& query)
 	if (json.at("which") == "all") {
 		query.which = Injection::OpcodeQuery::AllOccurrences{};
 	} else {
-		std::vector<uint32_t> indices;
+		std::vector<int32_t> indices;
 		json.at("which").get_to(indices);
 		query.which = std::move(indices);
 	}
-	json.at("searchFrom").get_to(query.searchFrom);
+	json.at("pick").get_to(query.pick);
 }
 
 void
 from_json(const Json& json, Injection::Query& query)
 {
-	if (json == "head") {
-		query = Injection::HeadQuery{};
-	} else {
-		Injection::OpcodeQuery opcodeQuery;
-		json.get_to(opcodeQuery.opcode);
-		query = std::move(opcodeQuery);
-	}
+
+	Injection::OpcodeQuery opcodeQuery;
+	json.get_to(opcodeQuery);
+	query = std::move(opcodeQuery);
 }
 
 void
@@ -98,8 +86,7 @@ from_json(const Json& json, Injection& injection)
 {
 	json.at("into").get_to(injection.into);
 	json.at("select").get_to(injection.select);
-	json.at("do").get_to(injection.action);
-	json.at("with").get_to(injection.with);
+	json.at("place").get_to(injection.place);
 }
 
 }

@@ -8,42 +8,26 @@
 
 namespace yarn {
 
-enum class PatchType
-{
-	Replacement,
-	Injection,
-};
-
 struct Injection
 {
-	struct HeadQuery
-	{};
-
 	struct OpcodeQuery
 	{
 		struct AllOccurrences
 		{};
 
-		enum SearchFrom
+		enum class Pick
 		{
+			Span,
 			Start,
 			End,
 		};
 
 		Opcode opcode;
-		std::variant<AllOccurrences, std::vector<uint32_t>> which;
-		SearchFrom searchFrom;
+		std::variant<AllOccurrences, std::vector<int32_t>> which;
+		Pick pick;
 	};
 
-	using Query = std::variant<HeadQuery, OpcodeQuery>;
-
-	enum class Action
-	{
-		Prepend,
-		Append,
-		Replace,
-		Insert,
-	};
+	using Query = std::variant<OpcodeQuery>;
 
 	struct StaticFinalFunctionCall
 	{
@@ -54,8 +38,13 @@ struct Injection
 
 	std::string into;
 	std::vector<Query> select;
-	Action action;
-	CodeGen with;
+	CodeGen place;
+};
+
+enum class PatchType
+{
+	Replacement,
+	Injection,
 };
 
 struct Patch

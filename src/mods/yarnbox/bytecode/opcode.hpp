@@ -319,7 +319,7 @@ namespace yarn {
 
 #define YARN__EXPAND_AS_ENUM_MEMBERS(name, index) name = index,
 
-enum class Opcode
+enum class Opcode : uint16_t
 {
 	YARN_X_OPCODES(YARN__EXPAND_AS_ENUM_MEMBERS)
 };

@@ -6,6 +6,6 @@
 namespace yarn {
 
 void
-ApplyPatch(const Patch& patch, const Registry& registry);
+ApplyPatch(const Patch& patch, Registry& registry);
 
 }

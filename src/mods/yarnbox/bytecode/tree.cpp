@@ -3,10 +3,10 @@
 using namespace yarn;
 
 BytecodeTree::NodeIndex
-BytecodeTree::AppendNode(Node node)
+BytecodeTree::AppendNewNode()
 {
 	NodeIndex index = nodes.size();
-	nodes.push_back(node);
+	nodes.push_back(Node{});
 	return index;
 }
 
@@ -66,7 +66,7 @@ BytecodeTree::IsBytecodeBogusAt(size_t ip) const
 }
 
 void
-BytecodeTree::SetDataSpan(DataIndex index, Span span)
+BytecodeTree::SetDataSpan(DataIndex index, BytecodeSpan span)
 {
 	if (dataSpans.size() <= index) {
 		dataSpans.resize(index + 1);

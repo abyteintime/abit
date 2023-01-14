@@ -50,8 +50,8 @@ Chunk::GetOrPerformDisassembly()
 			);
 			return nullptr;
 		}
-		if (std::optional<BytecodeTree::NodeIndex> rootNode =
-				yarn::Disassemble(&ustruct->bytecode[0], ustruct->bytecode.length, disasm.tree)) {
+		if (std::optional<BytecodeTree::NodeIndex> rootNode
+			= yarn::Disassemble(&ustruct->bytecode[0], ustruct->bytecode.length, disasm.tree)) {
 			disasm.rootNode = *rootNode;
 			this->disassembly = std::move(disasm);
 		} else {
@@ -69,7 +69,8 @@ Chunk::GetOrPerformAnalysis()
 	if (!analysis.has_value()) {
 		if (const Disassembly* disasm = GetOrPerformDisassembly()) {
 			Analysis analysis;
-			analysis.jumps.Analyze(disasm->tree, disasm->rootNode);
+			analysis.jumps.Analyze(disasm->tree);
+			analysis.index.Analyze(disasm->tree);
 			this->analysis = std::move(analysis);
 		} else {
 			spdlog::error(

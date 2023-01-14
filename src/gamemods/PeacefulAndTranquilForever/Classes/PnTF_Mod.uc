@@ -1,4 +1,4 @@
-class YbTest_Mod extends GameMod
+class PnTF_Mod extends GameMod
 	config(Mods);
 
 event OnModLoaded()

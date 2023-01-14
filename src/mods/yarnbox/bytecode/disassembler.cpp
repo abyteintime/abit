@@ -111,13 +111,18 @@ Disassembler::Disassemble()
 NodeIndex
 Disassembler::DisassembleOpcode(uint16_t ipAtStart, Opcode opcode)
 {
+	// Create nodes first and then fill in their data, so that they end up in the same order in the
+	// tree as they appear in the bytecode. This allows us to accelerate indexing nodes, since
+	// we only need a linear, non-recursive search.
+	NodeIndex node = outTree->AppendNewNode();
 	if (opcode == Opcode::OutOfBounds) {
 		spdlog::warn("Disassembling opcode resulted in an out-of-bounds read");
 		outTree->SetFirstErrorIfNull(ipAtStart);
 		if (outStats != nullptr) {
 			outStats->outOfBoundsReads += 1;
 		}
-		return outTree->AppendNode({ { ipAtStart, ipAtStart }, opcode });
+		outTree->UpdateNode(node, { { ipAtStart, ipAtStart }, opcode });
+		return node;
 	}
 
 	const Rule& rule = encoding.Rule(opcode);
@@ -137,7 +142,8 @@ Disassembler::DisassembleOpcode(uint16_t ipAtStart, Opcode opcode)
 			outStats->occurrencesOfUnknownOpcodes[static_cast<size_t>(opcode)] += 1;
 		}
 		outTree->SetFirstErrorIfNull(ipAtStart);
-		return outTree->AppendNode({ { ipAtStart, ipAtStart }, opcode });
+		outTree->UpdateNode(node, { { ipAtStart, ipAtStart }, opcode });
+		return node;
 	}
 
 	DataIndex data = outTree->AppendData(rule.primsCount);
@@ -151,7 +157,8 @@ Disassembler::DisassembleOpcode(uint16_t ipAtStart, Opcode opcode)
 	}
 
 	uint16_t ipAtEnd = ip;
-	return outTree->AppendNode({ { ipAtStart, ipAtEnd }, opcode, data });
+	outTree->UpdateNode(node, { { ipAtStart, ipAtEnd }, opcode, data });
+	return node;
 }
 
 Opcode
@@ -174,8 +181,8 @@ Disassembler::NextOpcode()
 		case Opcode::HighNative13:
 		case Opcode::HighNative14:
 		case Opcode::HighNative15: {
-			uint32_t level =
-				static_cast<uint32_t>(CurrentByte() - static_cast<uint8_t>(Opcode::HighNative0));
+			uint32_t level
+				= static_cast<uint32_t>(CurrentByte() - static_cast<uint8_t>(Opcode::HighNative0));
 			Advance();
 			uint8_t offset = CurrentByte();
 			Advance();
@@ -219,9 +226,9 @@ Disassembler::Stats::ComputeSummary()
 std::optional<NodeIndex>
 yarn::Disassemble(uint8_t* bytecode, uint16_t length, BytecodeTree& outTree)
 {
-	BytecodeTree tree;
+	NodeIndex rootNode = outTree.AppendNewNode();
 
-	Disassembler disassembler{ bytecode, length, tree };
+	Disassembler disassembler{ bytecode, length, outTree };
 	std::vector<uint64_t> rootNodeChildren;
 	while (!disassembler.AtEnd()) {
 		BytecodeTree::NodeIndex nodeIndex = disassembler.Disassemble();
@@ -231,8 +238,9 @@ yarn::Disassemble(uint8_t* bytecode, uint16_t length, BytecodeTree& outTree)
 		rootNodeChildren.push_back(static_cast<uint64_t>(nodeIndex));
 	}
 
-	DataIndex rootNodeVector = tree.AppendDataFromVector(rootNodeChildren);
-	return tree.AppendNode(
-		{ { 0, static_cast<uint16_t>(length - 1) }, Opcode::BytecodeTree, rootNodeVector }
+	DataIndex rootNodeVector = outTree.AppendDataFromVector(rootNodeChildren);
+	outTree.UpdateNode(
+		rootNode, { { 0, static_cast<uint16_t>(length - 1) }, Opcode::BytecodeTree, rootNodeVector }
 	);
+	return rootNode;
 }

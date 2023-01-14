@@ -47,7 +47,8 @@ function Example()
 }
 ```
 
-This class is also used for `event`s, since they're essentially functions that are called from C++.
+This class is also used for `event`s, since they're the same as functions. The difference is that
+events can be called by C++ code.
 
 A `UState` represents a state, declared as follows in UnrealScript:
 
@@ -84,17 +85,15 @@ with the bytecode of a different, but compatible function. Replacements are spec
 `Replacement`-type entries inside `Yarnbox.Patches.json`, and look like so:
 
 ```json
-[
-  {
-    "type": "Replacement",
-    "comment": "Let the player move in the Peace and Tranquility menu",
-    "chunk": "MyMod.MyMod_PnTReplacements.DisablesMovement",
-  }
-]
+[{
+  "type": "Replacement",
+  "comment": "Let the player move in the Peace and Tranquility menu",
+  "chunk": "MyMod.MyMod_PnTReplacements.DisablesMovement",
+}]
 ```
 
 The specified `chunk` must be a function in a class that extends the base class the function is
-being replaced in. For example, for `MyMod_PntReplacements` to contain replacements for
+being replaced in. For example, for `MyMod_PnTReplacements` to contain replacements for
 `Hat_HUDMenu_HatKidDance`, we make it extend that class:
 
 ```unrealscript
@@ -121,13 +120,11 @@ insert bytecode into it.
 Injections use `Injection`-type entries, like so:
 
 ```json
-[
-  {
-    "type": "Injection",
-    "comment": "Injects into some game code",
-    "inject": [...]
-  }
-]
+[{
+  "type": "Injection",
+  "comment": "Injects into some game code",
+  "inject": [...]
+}]
 ```
 
 The `inject` array specifies a list of injections to apply.
@@ -138,7 +135,7 @@ Each injection is an object with the following fields:
   "into": "Chunk.To.Inject.Into",
   "select": [...],
   "action": "Insert",
-  "with": {...}
+  "place": {...}
 }
 ```
 
@@ -146,19 +143,20 @@ Injections are applied in sequence from top to bottom.
 
 ### Queries
 
-Each element in the `select` array is a query. A query is `"head"`, or an _opcode query_ object:
+Each element in the `select` array is a query. Each query must be an _opcode query_ object:
 
 ```json
 {
   "opcode": "OpcodeToSearchFor",
   "which": [0, 1, 2],
-  "searchFrom": "Start"
+  "pick": "Span"
 }
 ```
 
-Each query produces zero or more `start..end` spans that are then used by the injection action
-(described later.) A span can be _zero-sized_, which means that its start is the same as its end,
-and it effectively points to a single point in the bytecode.
+Every query produces zero or more `start..end` spans that are then replaced with something else.
+A span can be _zero-sized_, which means that its start is the same as its end, and it effectively
+points to a single point in the bytecode. Thus injecting into a zero-sized span inserts bytecode
+instead of replacing it.
 
 The `"head"` query produces a zero-sized span which points to the beginning of the chunk, right
 after the function arguments.
@@ -166,31 +164,20 @@ after the function arguments.
 The opcode query searches for occurrences of the given opcode within the chunk.
 
 - `opcode` defines which opcode should be searched for.
-- `which` defines which occurrences should be targeted, and can be `"all"` to target all occurrences. The numbers in the array can be negative, which means that
-occurrences will be counted from the end.
-- `searchFrom` defines the direction to perform the search in - `"Start"` searches from the first opcode in the chunk to the last, and `"End"` from the last to the first.
+- `which` defines which occurrences should be targeted, and can be `"all"` to target all
+  occurrences. The numbers in the array can be negative, which means that occurrences will be
+  counted from the end.
+- `pick` defines which part of the span should be worked on. `"Span"` selects the full span
+  `start..end`, `"Start"` picks the zero-sized span `start..start`, and `"End"` picks the
+  zero-sized span `end..end`.
 
 If an injection produces zero queries, a warning is emitted to signal that the patch effectively
 did not get applied to anything.
 
-### Actions
-
-Once one or more bytecode spans are produced by queries, the patcher performs an action.
-For non zero-sized spans, this action can be one of:
-
-- `"Prepend"` - prepend bytecode before the span's start
-- `"Append"` - append bytecode after the span's end
-- `"Replace"` - replace the entire span with other bytecode
-
-For zero-sized spans, there is only one action allowed - `"Insert"`, since none of the other
-existing actions makes sense in that case.
-However, `"Prepend"` and `"Append"` will be allowed if the injection has more queries than just
-a `"head"` query.
-
 ### Bytecode generation
 
-Last but not least, there's the `with` field. This field specifies what kind of bytecode to
-generate.
+Last but not least, there's the `place` field. This field specifies what kind of bytecode to
+place at the selected spans.
 
 #### `StaticFinalFunctionCall`
 
