@@ -10,7 +10,8 @@ struct Jumps
 {
 	struct Offset
 	{
-		BytecodeTree::DataIndex dataIndex;
+		BytecodeTree::NodeIndex nodeIndex;
+		uint32_t dataOffset;
 	};
 
 	std::vector<Offset> offsets;

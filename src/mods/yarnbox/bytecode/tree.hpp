@@ -21,6 +21,8 @@ struct BytecodeTree
 	using NodeIndex = uint32_t;
 	using DataIndex = uint64_t;
 
+	static constexpr NodeIndex invalidNodeIndex = 0xFFFFFFFF;
+
 	struct Node
 	{
 		uint64_t data = 0;
@@ -55,9 +57,12 @@ struct BytecodeTree
 	void SetFirstErrorIfNull(size_t ip);
 	bool IsBytecodeBogusAt(size_t ip) const;
 
-	inline uint64_t& Data(DataIndex index, size_t offset) { return data.at(index + offset); }
-	inline uint64_t Data(DataIndex index, size_t offset) const { return data.at(index + offset); }
-	inline BytecodeSpan DataSpan(DataIndex index, size_t offset) const
+	inline uint64_t& Data(DataIndex index, size_t offset = 0) { return data.at(index + offset); }
+	inline uint64_t Data(DataIndex index, size_t offset = 0) const
+	{
+		return data.at(index + offset);
+	}
+	inline BytecodeSpan DataSpan(DataIndex index, size_t offset = 0) const
 	{
 		return index + offset < dataSpans.size() ? dataSpans.at(index + offset)
 												 : BytecodeSpan::Invalid();

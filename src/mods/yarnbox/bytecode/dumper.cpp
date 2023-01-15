@@ -145,14 +145,14 @@ DumpPrimRec(
 				case KOffsetRel10:
 				case KOffsetRel11:
 				case KOffsetRel12: {
-					uint16_t jumpReference = static_cast<uint16_t>(prim.arg);
+					uint16_t jumpReference = static_cast<uint16_t>(prim.arg - KOffsetRel0);
 					int16_t jumpOffset = static_cast<int16_t>(value);
 					fmt::format_to(
 						out,
 						"i(orel+{}) {:+#x} --> {:03x}\n",
 						jumpReference,
 						jumpOffset,
-						span.start + jumpOffset
+						span.start + jumpReference + jumpOffset
 					);
 					break;
 				}
@@ -208,28 +208,45 @@ DumpNodeRec(
 	std::string& outString
 )
 {
-	AddIndent(level, outString);
+	if (nodeIndex != BytecodeTree::invalidNodeIndex) {
+		const BytecodeTree::Node& node = tree.nodes[nodeIndex];
 
-	const BytecodeTree::Node& node = tree.nodes[nodeIndex];
-	fmt::format_to(
-		std::back_inserter(outString),
-		"{:03x}..{:03x} @ {} ({})",
-		node.span.start,
-		node.span.end,
-		OpcodeToString(node.opcode),
-		fmt::underlying(node.opcode)
-	);
-	if (tree.IsBytecodeBogusAt(node.span.start)) {
-		outString += " (bogus)";
-	}
-	outString += '\n';
+		if (node.opcode == Opcode::BytecodeTree && level == 0) {
+			// The root node is special because we explicitly do not want it to add noise to the
+			// output. As such, when encountered at level 0, we dump nodes as if they were all
+			// top-level.
+			size_t count = tree.Data(node.data, 0);
+			for (size_t i = 0; i < count; ++i) {
+				auto nodeIndex = static_cast<BytecodeTree::NodeIndex>(tree.Data(node.data, 1 + i));
+				DumpNodeRec(tree, nodeIndex, level, outString);
+			}
+		} else {
+			AddIndent(level, outString);
 
-	const Rule& rule = encoding.Rule(node.opcode);
-	for (size_t i = 0; i < rule.primsCount; ++i) {
-		Primitive prim = rule.prims[i];
-		uint64_t value = tree.Data(node.data, i);
-		BytecodeSpan ip = tree.DataSpan(node.data, i);
-		DumpPrimRec(tree, ip, prim, value, level + 1, outString);
+			fmt::format_to(
+				std::back_inserter(outString),
+				"{:03x}..{:03x} @ {} ({})",
+				node.span.start,
+				node.span.end,
+				OpcodeToString(node.opcode),
+				fmt::underlying(node.opcode)
+			);
+			if (tree.IsBytecodeBogusAt(node.span.start)) {
+				outString += " (bogus)";
+			}
+			outString += '\n';
+
+			const Rule& rule = encoding.Rule(node.opcode);
+			for (size_t i = 0; i < rule.primsCount; ++i) {
+				Primitive prim = rule.prims[i];
+				uint64_t value = tree.Data(node.data, i);
+				BytecodeSpan ip = tree.DataSpan(node.data, i);
+				DumpPrimRec(tree, ip, prim, value, level + 1, outString);
+			}
+		}
+	} else {
+		AddIndent(level, outString);
+		outString += "<invalidated instruction>\n";
 	}
 }
 

@@ -312,12 +312,13 @@ namespace yarn {
 	EXPAND(Actor_MoveSmooth, 3969) \
 	EXPAND(Actor_SetPhysics, 3970) \
 	EXPAND(Actor_AutonomousPhysics, 3971) \
+	EXPAND(Overwritten, 4049) \
 	EXPAND(BytecodeTree, 4050) \
 	EXPAND(FlattenedPrimitiveCast, 4051) \
 	EXPAND(OutOfBounds, 4094) \
 	EXPAND(Unknown, 4095)
 
-#define YARN__EXPAND_AS_ENUM_MEMBERS(name, index) name = index,
+#define YARN__EXPAND_AS_ENUM_MEMBERS(Name, Index) Name = Index,
 
 enum class Opcode : uint16_t
 {

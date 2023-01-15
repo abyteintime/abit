@@ -1,4 +1,5 @@
 set(YARNBOX_SOURCES
+	"bytecode/codegen.cpp"
 	"bytecode/disassembler.cpp"
 	"bytecode/dumper.cpp"
 	"bytecode/encoding.cpp"

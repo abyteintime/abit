@@ -50,9 +50,11 @@ Chunk::GetOrPerformDisassembly()
 			);
 			return nullptr;
 		}
-		if (std::optional<BytecodeTree::NodeIndex> rootNode
-			= yarn::Disassemble(&ustruct->bytecode[0], ustruct->bytecode.length, disasm.tree)) {
-			disasm.rootNode = *rootNode;
+		BytecodeTree::NodeIndex rootNode;
+		if (yarn::Disassemble(
+				&ustruct->bytecode[0], ustruct->bytecode.length, disasm.tree, rootNode
+			)) {
+			disasm.rootNode = rootNode;
 			this->disassembly = std::move(disasm);
 		} else {
 			spdlog::error(

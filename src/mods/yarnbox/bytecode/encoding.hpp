@@ -92,6 +92,9 @@ struct Primitive
 		, arg(static_cast<uint8_t>(arg))
 	{
 	}
+
+	bool operator==(const Primitive& other) { return type == other.type && arg == other.arg; }
+	bool operator!=(const Primitive& other) { return !(*this == other); }
 };
 
 namespace primitive {

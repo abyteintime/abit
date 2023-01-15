@@ -18,11 +18,11 @@ Jumps::Analyze(const BytecodeTree& tree)
 		BytecodeTree::Node node = tree.nodes[nodeIndex];
 		const Rule& rule = encoding.Rule(node.opcode);
 		DataIndex data = node.data;
-		for (size_t i = 0; i < rule.primsCount; ++i) {
+		for (uint32_t i = 0; i < rule.primsCount; ++i) {
 			Primitive prim = rule.prims[i];
 			if (prim.type == PU16
 				&& (prim.arg == KOffsetAbs || IsOffsetRel(static_cast<IntKind>(prim.arg)))) {
-				offsets.push_back({ data + i });
+				offsets.push_back({ nodeIndex, i });
 			}
 		}
 	}

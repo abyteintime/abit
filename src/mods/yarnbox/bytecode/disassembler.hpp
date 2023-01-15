@@ -112,7 +112,12 @@ private:
 };
 
 /// Disassembles bytecode into a `BytecodeTree` root node.
-std::optional<BytecodeTree::NodeIndex>
-Disassemble(uint8_t* bytecode, uint16_t length, BytecodeTree& outTree);
+bool
+Disassemble(
+	uint8_t* bytecode,
+	uint16_t length,
+	BytecodeTree& outTree,
+	BytecodeTree::NodeIndex& outRootNode
+);
 
 }

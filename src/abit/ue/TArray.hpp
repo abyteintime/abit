@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <vector>
 
 #include "abit/ue/memory.hpp"
 
@@ -43,6 +44,16 @@ struct ViewIntoTArray
 
 	ViewIntoTArray(const ViewIntoTArray<T>&) = delete;
 	ViewIntoTArray(ViewIntoTArray<T>&&) = delete;
+
+	operator std::vector<T>()
+	{
+		std::vector<T> vector;
+		vector.reserve(length);
+		for (T element : *this) {
+			vector.push_back(element);
+		}
+		return vector;
+	}
 
 	const T& operator[](size_t i) const { return dataPtr[i]; }
 	T& operator[](size_t i) { return dataPtr[i]; }
@@ -120,6 +131,16 @@ struct TArray
 		other.dataPtr = nullptr;
 		other.length = 0;
 		other.capacity = 0;
+	}
+
+	operator std::vector<T>()
+	{
+		std::vector<T> vector;
+		vector.reserve(length);
+		for (T element : *this) {
+			vector.push_back(element);
+		}
+		return vector;
 	}
 
 	const T& operator[](size_t i) const { return dataPtr[i]; }

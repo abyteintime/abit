@@ -2,11 +2,13 @@
 
 #include <vector>
 
+#include "abit/ue/UFunction.hpp"
+
 #include "yarnbox/bytecode/opcode.hpp"
 
 namespace yarn::codegen {
 
 void
-StaticFinalFunctionCall(struct UFunction* function, std::vector<uint8_t>& outBytecode);
+StaticFinalFunctionCall(ue::UFunction* function, std::vector<uint8_t>& outBytecode);
 
 }
