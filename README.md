@@ -1,11 +1,14 @@
 # A Byte in Time
 
-A Hat in Time hacking toolkit.
+A Hat in Time tweaking toolkit.
 
 ## A word of warning
 
-At this stage ABiT is still only a proof of concept. Expect major breakthroughs and major
-breaking changes.
+At this stage ABiT is mostly a proof of concept. Expect major breakthroughs and major breaking
+changes.
+
+It is also not ready for general use. It has no testing suite, lacks releases and automated builds,
+so you will have to compile it manually from source.
 
 You have been warned.
 
@@ -15,23 +18,21 @@ So you may be saying this to yourself at this point: "but uncle liquidex, the ha
 modding support!!!11" And I know that!
 
 But the thing with A Hat in Time Modding As The Developers Intended is that it's very *limited.*
-You're confined to the limits of what adding new classes in UnrealScript can provide, and although
-the game is mostly written in UnrealScript anyways, doing more advanced things that intend to modify
-the base game is quite a pain. Which is why you only ever see mods that *add* content on the
-Workshop.
-
-Because, say you want to modify an existing piece of GUI? Ha ha ha, ***good luck!***
+You're confined to the limits of what adding new classes in UnrealScript can provide, and cannot
+modify any native code, nor tweak the existing UnrealScript in any way.
 
 Which is where ABiT comes in.
 
 ## What
 
-As mentioned already, ABiT is a hacking toolkit for A Hat in Time. Its purpose is to expose the
+As mentioned already, ABiT is a tweaking toolkit for A Hat in Time. Its purpose is to expose the
 internals of the game such that **You** can play around with them in ways the developers never even
 thought of. Want to make the in-game speedrun timer display 4:20 at all times?
-[Got you covered](src/mods/example_fourtwenty/).
+[Got you covered](src/mods/example_fourtwenty/). Wanna have Peace and Tranquility loop forever?
+[Take a look](src/gamemods/PeacefulAndTranquilForever/).
 
 ABiT is split into a few modules, each one fulfilling a single purpose:
+
 - **The Launcher,** which handles starting the game up, and injecting into it a tiny lil' DLL called
 - **The Loader.** This piece of code is responsible for handling the basic logic of patching into
   the game's code, and exposing that functionality to mod DLLs, which it loads before the game is
@@ -44,20 +45,17 @@ ABiT is split into a few modules, each one fulfilling a single purpose:
   ships next to the game's .exe, and bada bing, bada boom, *your symbols are now in my room.*
   Using a Rust program, we read the .pdb to figure out where all the public symbols are; we demangle
   them, and save their addresses into a .dll.
-  - Using a .dll allows us to have at least *some* level of cross-version compatibility.
-    The launcher, loader, and mods can potentially stay at the same version for many updates to
-    A Hat in Time, and you'll only need to replace `AByteInTime.Procs.dll` with each update.
-    Of course ABI compatibility is another thing, because the .dll does not contain any information
-    about function signatures, so if any of them changes, your mod crashes and burns (and the game
-    together with it.)
-- **The Yarnbox,** which is still in its infancy.
-  The Yarnbox is going to be a native mod which enables UnrealScript bytecode patching
-  functionality, very much akin to what's done in [Minecraft modding][mcmods] with [Mixin].
-  - When this will come out, I have no idea; it'll probably take me a while until I have a PoC
-    for this because I need to reverse engineer how the UnrealScript VM actually works under the
-    hood.
+  - Using an intermediate .dll allows us to have at least *some* level of cross-version
+    compatibility. The launcher, loader, and mods can potentially stay at the same version for many
+    updates to A Hat in Time, and you'll only need to replace `AByteInTime.Procs.dll` with each
+    update. Of course ABI compatibility is another thing, because the .dll does not contain any
+    information about function signatures, so if any of them changes, your mod crashes and burns
+    (and the game together with it.)
+- **The Yarnbox,** which is a mod built on ABiT to enable UnrealScript bytecode patching.
+  What Yarnbox does is similar to what [Fabric] does with [Mixin] - it allows you to patch arbitrary
+  pieces of bytecode with your own functions.
 
-  [mcmods]: https://fabricmc.net/
+  [Fabric]: https://fabricmc.net/
   [Mixin]: https://github.com/SpongePowered/Mixin
 
 ## How
@@ -76,6 +74,7 @@ Older versions may work but haven't been tested.
 ### Building the toolkit
 
 With all the prerequisites gathered, it's time to build:
+
 ```powershell
 # Before building:
 PS> .\scripts\setup.ps1
@@ -97,9 +96,11 @@ the game elsewhere or from Humble.
 
 It's possible to change the directory by passing the argument `-DABIT_HATINTIME_PATH=...` when
 running `.\scripts\setup.ps1`:
+
 ```powershell
 PS> .\scripts\setup.ps1 -DABIT_HATINTIME_PATH="C:\Path\To\HatinTime"
 ```
+
 The path you pass to CMake should be the directory containing the folders `Binaries`,
 `HatinTimeGame`, and `Engine`, such that `Binaries/HatinTimeGame.pdb` can be reached from it.
 
@@ -108,6 +109,7 @@ The path you pass to CMake should be the directory containing the folders `Binar
 During runtime, the ABiT launcher needs to know where to find the game executable to launch.
 This can be configured inside `ByteinTime.ini`, which is located next to the `AByteInTime.exe`
 executable, and generated upon first launch:
+
 ```ini
 [Game]
 ; If your game is installed in a different directory, change that here.
@@ -127,12 +129,14 @@ ABiT and Yarnbox ship with a few example mods that demonstrate what they can do.
 
 Native (ABiT) mods are built together with the loader, but disabled in the config. You can reenable
 them by removing these `+Disable` lines from `ByteinTime.ini`:
+
 ```ini
 [Mods]
 ; By default, all mods are enabled. Each mod can be disabled individually by using +Disable.
 +Disable=ExampleMod
 +Disable=Example.FourTwenty
 ```
+
 Not that these mods do anything particularly interesting.
 
 #### Yarnbox mods
@@ -141,18 +145,21 @@ Compiling the included Yarnbox example mods involves a little extra work. You wi
 Hat in Time modding tools installed for this.
 
 To kickstart the compilation of all mods, use the following PowerShell script:
+
 ```powershell
 PS> .\scripts\buildAndInstallGameMods.ps1
 ```
 
 If you're working on one of the mods and would like to recompile only a specific one, use the `-Mod`
 argument:
+
 ```powershell
-PS> .\scripts\buildAndInstallGameMods.ps1 -Mod YarnboxTesting
+PS> .\scripts\buildAndInstallGameMods.ps1 -Mod PeacefulAndTranquilForever
 ```
 
 If your game is installed in a different directory than the Steam default, you can use
 `-GameInstallDirectory` to change it:
+
 ```powershell
 PS> .\scripts\buildAndInstallGameMods.ps1 -GameInstallDirectory "C:\Path\To\HatinTime"
 ```
