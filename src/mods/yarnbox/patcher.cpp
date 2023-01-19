@@ -222,7 +222,9 @@ PrepareInjection(InjectionState& state, const Injection& injection, Registry& re
 	if (const auto* call = std::get_if<Injection::StaticFinalFunctionCall>(&injection.place)) {
 		const Chunk* injectedChunk = registry.GetChunkByName(call->function);
 		ABIT_ENSURE(
-			chunk != nullptr, "StaticFinalFunctionCall chunk '{}' does not exist", call->function
+			injectedChunk != nullptr,
+			"StaticFinalFunctionCall chunk '{}' does not exist",
+			call->function
 		);
 		UFunction* injectedFunction = Cast<UFunction>(injectedChunk->ustruct);
 		ABIT_ENSURE(
@@ -231,7 +233,11 @@ PrepareInjection(InjectionState& state, const Injection& injection, Registry& re
 			call->function,
 			injectedChunk->ustruct->objectClass->GetName().ToString()
 		);
-		codegen::StaticFinalFunctionCall(injectedFunction, injectedBytecode);
+		codegen::BeginStaticFinalFunctionCall(injectedFunction, injectedBytecode);
+		if (call->captureSelf) {
+			codegen::Self(injectedBytecode);
+		}
+		codegen::EndStaticFinalFunctionCall(injectedBytecode);
 	}
 
 	for (size_t i = 0; i < spans.size(); ++i) {

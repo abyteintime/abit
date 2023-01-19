@@ -32,6 +32,7 @@ struct Injection
 	struct StaticFinalFunctionCall
 	{
 		std::string function;
+		bool captureSelf = false;
 	};
 
 	using CodeGen = std::variant<StaticFinalFunctionCall>;

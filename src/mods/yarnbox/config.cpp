@@ -77,6 +77,7 @@ from_json(const Json& json, Injection::CodeGen& codegen)
 	if (type == "StaticFinalFunctionCall") {
 		Injection::StaticFinalFunctionCall cg;
 		json.at("function").get_to(cg.function);
+		cg.captureSelf = json.value("captureSelf", false);
 		codegen = std::move(cg);
 	}
 }

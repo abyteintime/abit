@@ -13,7 +13,7 @@ using namespace yarn;
 using namespace ue;
 
 void
-codegen::StaticFinalFunctionCall(UFunction* function, std::vector<uint8_t>& outBytecode)
+codegen::BeginStaticFinalFunctionCall(UFunction* function, std::vector<uint8_t>& outBytecode)
 {
 	assert(function != nullptr);
 
@@ -27,8 +27,9 @@ codegen::StaticFinalFunctionCall(UFunction* function, std::vector<uint8_t>& outB
 	totalSize += 1; //   u8
 	totalSize += 1; //   FinalFunction
 	totalSize += 8; //     obj
-	totalSize += 1; //     EndFunctionParms
-	outBytecode.resize(totalSize);
+	// totalSize += 1; //     EndFunctionParms - added dynamically
+	size_t startIndex = outBytecode.size();
+	outBytecode.resize(startIndex + totalSize);
 
 	UStruct* owningClass = Cast<UStruct>(function->outer);
 	ABIT_ENSURE(owningClass != nullptr, "function does not have an owning class to call it on");
@@ -44,15 +45,30 @@ codegen::StaticFinalFunctionCall(UFunction* function, std::vector<uint8_t>& outB
 	// produces a valid object. Or so we hope. We check this with the ABIT_ENSURE above to be sure.
 	// Only a monster would disable exceptions.
 
-	outBytecode[0] = static_cast<uint8_t>(Opcode::ClassContext);
-	outBytecode[1] = static_cast<uint8_t>(Opcode::ObjectConst);
-	*(UObject**)&outBytecode[2] = owningClass;
-	// And the following (bytes 10..20) is the bogus part, which is never actually read by the VM.
-	outBytecode[10] = 0;
-	outBytecode[11] = 0;
-	*(UObject**)&outBytecode[12] = nullptr;
-	outBytecode[20] = 0;
-	outBytecode[21] = static_cast<uint8_t>(Opcode::FinalFunction);
-	*(UObject**)&outBytecode[22] = function;
-	outBytecode[30] = static_cast<uint8_t>(Opcode::EndFunctionParms);
+	{
+		uint8_t* code = &outBytecode[startIndex];
+		code[0] = static_cast<uint8_t>(Opcode::ClassContext);
+		code[1] = static_cast<uint8_t>(Opcode::ObjectConst);
+		*(UObject**)&code[2] = owningClass;
+		// And the following (bytes 10..20) is the bogus part, which is never actually read by the
+		// VM.
+		code[10] = 0;
+		code[11] = 0;
+		*(UObject**)&code[12] = nullptr;
+		code[20] = 0;
+		code[21] = static_cast<uint8_t>(Opcode::FinalFunction);
+		*(UObject**)&code[22] = function;
+	}
+}
+
+void
+codegen::EndStaticFinalFunctionCall(std::vector<uint8_t>& outBytecode)
+{
+	outBytecode.push_back(static_cast<uint8_t>(Opcode::EndFunctionParms));
+}
+
+void
+codegen::Self(std::vector<uint8_t>& outBytecode)
+{
+	outBytecode.push_back(static_cast<uint8_t>(Opcode::Self));
 }

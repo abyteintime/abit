@@ -9,6 +9,12 @@
 namespace yarn::codegen {
 
 void
-StaticFinalFunctionCall(ue::UFunction* function, std::vector<uint8_t>& outBytecode);
+BeginStaticFinalFunctionCall(ue::UFunction* function, std::vector<uint8_t>& outBytecode);
+
+void
+EndStaticFinalFunctionCall(std::vector<uint8_t>& outBytecode);
+
+void
+Self(std::vector<uint8_t>& outBytecode);
 
 }

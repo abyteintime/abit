@@ -34,6 +34,7 @@
 #include "abit/ue/UObject/fmt.hpp"
 #include "abit/ue/UStruct.hpp"
 
+#include "abit/procs/FMaterialResource.hpp"
 #include "abit/procs/FName.hpp"
 #include "abit/procs/global.hpp"
 
@@ -195,10 +196,50 @@ FEngineLoop_Init(class FEngineLoop* self)
 	PostInit();
 }
 
+class UMaterial : UObject
+{};
+
+struct FMaterialResource
+{
+	uint8_t __padding__[196];
+	uint32_t blendMode;
+};
+
+static void (*O_FMaterialResource_FMaterialResource)(FMaterialResource*, UMaterial*);
+static void
+FMaterialResource_FMaterialResource(FMaterialResource* self, UMaterial* mat)
+{
+	O_FMaterialResource_FMaterialResource(self, mat);
+	if (self->blendMode == 1) {
+		self->blendMode = 0;
+	}
+}
+
+static void (*O_FMaterialResource_Serialize)(FMaterialResource*, FArchive*);
+static void
+FMaterialResource_Serialize(FMaterialResource* self, FArchive* ar)
+{
+	O_FMaterialResource_Serialize(self, ar);
+	if (self->blendMode == 1) {
+		self->blendMode = 0;
+	}
+}
+
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
 	abit::Patch(abit::procs::UStruct::Serialize, &UStruct_Serialize, O_UStruct_Serialize);
 	abit::Patch(abit::procs::FEngineLoop::Init, &FEngineLoop_Init, O_FEngineLoop_Init);
 	abit::Patch(abit::procs::UObject::CallFunction, &UObject_CallFunction, O_UObject_CallFunction);
+
+	abit::Patch(
+		abit::procs::FMaterialResource::FMaterialResource,
+		&FMaterialResource_FMaterialResource,
+		O_FMaterialResource_FMaterialResource
+	);
+	abit::Patch(
+		abit::procs::FMaterialResource::Serialize,
+		&FMaterialResource_Serialize,
+		O_FMaterialResource_Serialize
+	);
 }
