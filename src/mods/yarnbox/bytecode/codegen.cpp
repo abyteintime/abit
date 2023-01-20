@@ -72,3 +72,15 @@ codegen::Self(std::vector<uint8_t>& outBytecode)
 {
 	outBytecode.push_back(static_cast<uint8_t>(Opcode::Self));
 }
+
+codegen::CodeGenerator::~CodeGenerator() = default;
+
+void
+codegen::StaticFinalFunctionCallGenerator::GenerateCode(std::vector<uint8_t>& outBytecode) const
+{
+	BeginStaticFinalFunctionCall(function, outBytecode);
+	if (captureSelf) {
+		Self(outBytecode);
+	}
+	EndStaticFinalFunctionCall(outBytecode);
+}

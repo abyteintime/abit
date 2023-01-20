@@ -17,56 +17,6 @@ using Node = BytecodeTree::Node;
 using NodeIndex = BytecodeTree::NodeIndex;
 using DataIndex = BytecodeTree::DataIndex;
 
-static void
-ApplyReplacement(const Patch::Replacement& replacement, const Registry& registry)
-{
-	const Chunk* replacementChunk = registry.GetChunkByName(replacement.chunk);
-	ABIT_ENSURE(replacementChunk != nullptr, "chunk '{}' does not exist", replacement.chunk);
-	ABIT_ENSURE(
-		replacementChunk->ustruct->bytecode.length > 0, "chunk '{}' does not contain any bytecode"
-	);
-	UStruct* replacementSourceClass = Cast<UStruct>(replacementChunk->ustruct->outer);
-
-	UStruct* parentType = replacementSourceClass->parentType;
-	ABIT_ENSURE(
-		parentType->objectClass == UClass::StaticClass(),
-		"{}, the parent type of {}, is not a UClass",
-		UObjectFmt{ parentType },
-		UObjectFmt{ replacementChunk->ustruct }
-	);
-
-	const Chunk* parentClass = registry.GetChunkByPointer(parentType);
-	ABIT_ENSURE(
-		parentClass->functions.count(replacementChunk->name) > 0,
-		"function '{}' does not exist within the parent class '{}' of replacement class '{}'.\n"
-		"Available functions are:{}",
-		replacementChunk->name,
-		parentClass->name,
-		replacementSourceClass->GetName().ToString(),
-		[parentClass] {
-			std::string text;
-			for (const auto& [key, value] : parentClass->functions) {
-				text += fmt::format("\n  - {}", key);
-			}
-			return text;
-		}()
-	);
-
-	auto* functionToReplace
-		= Cast<UFunction>(parentClass->functions.at(replacementChunk->name)->ustruct);
-	auto* replacementFunction = Cast<UFunction>(replacementChunk->ustruct);
-	ABIT_ENSURE(
-		replacementFunction != nullptr,
-		"chunk {} is not a UFunction",
-		UObjectFmt{ replacementChunk->ustruct }
-	);
-
-	functionToReplace->bytecode.Clear();
-	functionToReplace->bytecode.ExtendByCopying(replacementFunction->bytecode);
-
-	spdlog::debug("Replacement patch '{}' was applied successfully", replacement.chunk);
-}
-
 namespace yarn {
 
 struct ChunkWorkingCopy
@@ -180,23 +130,23 @@ InvalidateNodeData(BytecodeTree& tree, NodeIndex nodeIndex)
 static void
 PrepareInjection(InjectionState& state, const Injection& injection, Registry& registry)
 {
-	Chunk* chunk = registry.GetChunkByName(injection.into);
-	ABIT_ENSURE(chunk != nullptr, "target chunk '{}' does not exist", injection.into);
+	Chunk* chunk = registry.GetChunkByPointer(injection.into);
+	ABIT_ENSURE(chunk != nullptr, "target chunk {} is not patchable", UObjectFmt{ injection.into });
 	UFunction* function = Cast<UFunction>(chunk->ustruct);
 	ABIT_ENSURE(
 		function != nullptr,
-		"target chunk '{}' is not a UFunction; it is a {}",
-		injection.into,
+		"target chunk {} is not a Function; it is a {}",
+		UObjectFmt{ injection.into },
 		chunk->ustruct->objectClass->GetName().ToString()
 	);
 
 	auto [disasm, analysis] = chunk->GetOrPerformAnalysis();
 	ABIT_ENSURE(
 		disasm != nullptr,
-		"disassembly of chunk '{}' failed. Please report this on ABiT's GitHub",
-		injection.into
+		"disassembly of chunk {} failed. Please report this on ABiT's GitHub",
+		UObjectFmt{ injection.into }
 	);
-	ABIT_ENSURE(analysis != nullptr, "analysis of chunk '{}' failed", injection.into);
+	ABIT_ENSURE(analysis != nullptr, "analysis of chunk '{}' failed", UObjectFmt{ injection.into });
 
 	ChunkWorkingCopy* copy = state.GetWorkingCopyOfChunk(chunk, *disasm, *analysis);
 
@@ -207,38 +157,16 @@ PrepareInjection(InjectionState& state, const Injection& injection, Registry& re
 
 	std::vector<BytecodeSpan> spans;
 	for (size_t i = 0; i < injection.select.size(); ++i) {
-		const Injection::Query& query = injection.select[i];
-		if (const auto* opcodeQuery = std::get_if<Injection::OpcodeQuery>(&query)) {
-			uint32_t found = PerformOpcodeQuery(
-				*opcodeQuery, copy->disassembly.tree, copy->analysis.index, spans
-			);
-			ABIT_ENSURE(
-				found > 0, "query #{} did not find any spans, which makes the query useless", i + 1
-			);
-		}
+		const Injection::OpcodeQuery& query = injection.select[i];
+		uint32_t found
+			= PerformOpcodeQuery(query, copy->disassembly.tree, copy->analysis.index, spans);
+		ABIT_ENSURE(
+			found > 0, "query #{} did not find any spans, which makes the query useless", i + 1
+		);
 	}
 
 	std::vector<uint8_t> injectedBytecode;
-	if (const auto* call = std::get_if<Injection::StaticFinalFunctionCall>(&injection.place)) {
-		const Chunk* injectedChunk = registry.GetChunkByName(call->function);
-		ABIT_ENSURE(
-			injectedChunk != nullptr,
-			"StaticFinalFunctionCall chunk '{}' does not exist",
-			call->function
-		);
-		UFunction* injectedFunction = Cast<UFunction>(injectedChunk->ustruct);
-		ABIT_ENSURE(
-			injectedFunction != nullptr,
-			"StaticFinalFunctionCall chunk '{}' is not a UFunction; it is a {}",
-			call->function,
-			injectedChunk->ustruct->objectClass->GetName().ToString()
-		);
-		codegen::BeginStaticFinalFunctionCall(injectedFunction, injectedBytecode);
-		if (call->captureSelf) {
-			codegen::Self(injectedBytecode);
-		}
-		codegen::EndStaticFinalFunctionCall(injectedBytecode);
-	}
+	injection.generate->GenerateCode(injectedBytecode);
 
 	for (size_t i = 0; i < spans.size(); ++i) {
 		BytecodeSpan splice = spans[i];
@@ -377,10 +305,12 @@ ApplyInjection(const Patch& patch, const Patch::Injection& injections, Registry&
 	for (size_t i = 0; i < injections.inject.size(); ++i) {
 		const Injection& injection = injections.inject[i];
 		try {
-			spdlog::trace("Preparing injection #{} into '{}'", i, injection.into);
+			spdlog::trace("Preparing injection #{} into {}", i, UObjectFmt{ injection.into });
 			PrepareInjection(state, injection, registry);
 		} catch (abit::Error e) {
-			spdlog::error("Patch '{}': error in injection #{}: {}", patch.comment, i + 1, e.what);
+			spdlog::error(
+				"Patch '{}': error in injection #{}: {}", patch.comment, i + 1, e.message
+			);
 			allSucceeded = false;
 		}
 	}
@@ -404,12 +334,10 @@ yarn::ApplyPatch(const Patch& patch, Registry& registry)
 	spdlog::debug("Applying patch '{}'", patch.comment);
 
 	try {
-		if (const auto* replacement = std::get_if<Patch::Replacement>(&patch.data)) {
-			ApplyReplacement(*replacement, registry);
-		} else if (const auto* injection = std::get_if<Patch::Injection>(&patch.data)) {
+		if (const auto* injection = std::get_if<Patch::Injection>(&patch.data)) {
 			ApplyInjection(patch, *injection, registry);
 		}
 	} catch (abit::Error e) {
-		spdlog::error("Cannot apply patch '{}': {}", patch.comment, e.what);
+		spdlog::error("Cannot apply patch '{}': {}", patch.comment, e.message);
 	}
 }

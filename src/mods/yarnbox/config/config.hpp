@@ -11,7 +11,6 @@ namespace yarn {
 
 struct ModConfig
 {
-	uint32_t version;
 	std::vector<Patch> patches;
 
 	static std::optional<std::filesystem::path> PathInModDirectory(

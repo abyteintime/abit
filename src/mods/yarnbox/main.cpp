@@ -14,7 +14,7 @@
 #include "abit/procs/UObject.hpp"
 #include "abit/procs/UStruct.hpp"
 
-#include "yarnbox/config.hpp"
+#include "yarnbox/config/config.hpp"
 #include "yarnbox/patcher.hpp"
 #include "yarnbox/registry.hpp"
 
@@ -156,7 +156,7 @@ PostInit()
 				ModConfig config = ModConfig::Load(*configPath);
 				ApplyPatches(config.patches);
 			} catch (abit::Error e) {
-				spdlog::error("Applying patches failed: {}", e.what);
+				spdlog::error("Applying patches failed: {}", e.message);
 			}
 		}
 	}
