@@ -33,7 +33,7 @@ local function MakeSingularInjection(data)
 	return i
 end
 
-function injections(comment)
+function injectionset(comment)
 	return function (data)
 		for i = 1, #data do
 			data[i] = MakeSingularInjection(data[i])
@@ -45,12 +45,15 @@ function injections(comment)
 		table.insert(Yarnbox.outPatches, p)
 	end
 end
+injectionSet = injectionset
+InjectionSet = injectionset
 
 function injection(comment)
 	return function (data)
-		return injections(comment) { data }
+		return injectionset(comment) { data }
 	end
 end
+Injection = injection
 
 AllOccurrences = Yarnbox.AllOccurrences
 
