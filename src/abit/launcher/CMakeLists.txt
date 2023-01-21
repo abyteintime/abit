@@ -3,6 +3,8 @@ set(ABIT_LAUNCHER_SOURCES
 	"process.cpp"
 
 	"main.cpp"
+
+	"assets/abit.rc"
 )
 
 add_executable(AByteInTime ${ABIT_LAUNCHER_SOURCES})
