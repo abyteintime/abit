@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::Debug,
+    hash::Hash,
     io::{Read, Seek},
 };
 
@@ -8,8 +9,7 @@ use anyhow::Context;
 use pdb::FallibleIterator;
 use symbolic_common::{Language, Name, NameMangling};
 use symbolic_demangle::{Demangle, DemangleOptions};
-
-use crate::filter::is_template;
+use twox_hash::{xxh3::HasherExt, Xxh3Hash128};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -23,7 +23,17 @@ pub struct Symbol {
     pub mangled_name: String,
     pub demangled_name: String,
     pub full_demangled_name: String,
+    pub exposed_name: String,
     pub address: u32,
+}
+
+impl Symbol {
+    fn get_exposed_name(mangled_name: &str) -> String {
+        let mut hasher = Xxh3Hash128::default();
+        mangled_name.hash(&mut hasher);
+        let hash = hasher.finish_ext();
+        format!("{hash:032x}")
+    }
 }
 
 #[derive(Debug)]
@@ -43,10 +53,6 @@ impl SymbolGroup {
                 group
             }
         }
-    }
-
-    pub fn is_overloaded(&self) -> bool {
-        self.overloads.len() > 1
     }
 }
 
@@ -81,6 +87,7 @@ where
                     kind: SymbolKind::Data,
                     mangled_name: name.clone(),
                     demangled_name: name.clone(),
+                    exposed_name: Symbol::get_exposed_name(&name),
                     full_demangled_name: name,
                     address: rva.0,
                 }
@@ -88,11 +95,6 @@ where
             pdb::SymbolData::Public(data) => {
                 let name = Name::new(data.name.to_string(), NameMangling::Unknown, Language::Cpp);
                 let demangled = name.try_demangle(DemangleOptions::name_only());
-                if is_template(&demangled) {
-                    // Templates are not supported as of now because they're kinda hard to parse.
-                    // Most Unreal code operates on reflection anyways.
-                    continue;
-                }
                 let demangled_full = name.try_demangle(DemangleOptions::complete());
                 let rva = data.offset.to_rva(&address_map).unwrap_or_default();
                 Symbol {
@@ -105,16 +107,15 @@ where
                     mangled_name: data.name.to_string().to_string(),
                     demangled_name: demangled.to_string(),
                     full_demangled_name: demangled_full.to_string(),
+                    exposed_name: Symbol::get_exposed_name(&data.name.to_string()),
                     address: rva.0,
                 }
             }
             _ => continue,
         };
 
-        let (namespace_name, name_in_namespace) = symbol
-            .demangled_name
-            .rsplit_once("::")
-            .unwrap_or(("global", &symbol.demangled_name));
+        let (namespace_name, name_in_namespace) =
+            (symbol.exposed_name.split_at(2).0, &symbol.exposed_name);
         let namespace = namespaces
             .entry(namespace_name.to_string())
             .or_insert_with(Namespace::default);
