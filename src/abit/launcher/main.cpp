@@ -3,13 +3,14 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "abit/config.hpp"
 #include "abit/defer.hpp"
+#include "abit/env.hpp"
 #include "abit/error.hpp"
 #include "abit/paths.hpp"
 #include "abit/string.hpp"
 #include "abit/version.hpp"
 
-#include "abit/config.hpp"
 #include "abit/launcher/paths.hpp"
 #include "abit/launcher/process.hpp"
 
@@ -18,7 +19,7 @@ namespace abit {
 void
 LauncherMain()
 {
-	printf("Welcome to A Byte in Time, the Hat in Time hacking toolkit\n");
+	printf("Welcome to A Byte in Time, the Hat in Time tweaking toolkit\n");
 	printf("Launcher version %s\n", version);
 
 	std::filesystem::path configPath = GetConfigPath();
@@ -36,7 +37,22 @@ LauncherMain()
 	printf("Working directory: %ls\n", processWorkingDirectory.c_str());
 	printf("Loader DLL: %ls\n", loaderDllPath.c_str());
 
-	Process gameProcess{ executablePath, processWorkingDirectory };
+	// We want to inherit the environment from the parent process, but also add this executable's
+	// parent directory to it so that the game's process can find the loader's dependencies,
+	// native mods, etc.
+	std::vector<std::wstring> environment = GetAllEnvVars();
+	for (std::wstring& var : environment) {
+		if (StartsWithCaseInsensitive(var, L"Path=")) {
+			std::filesystem::path thisExecutable = GetExecutablePath();
+			std::filesystem::path thisDirectory = thisExecutable.parent_path();
+			var += L';';
+			var += thisDirectory.wstring();
+		}
+	}
+	std::wstring environmentBlock = MakeEnv(environment);
+
+	Process gameProcess{ executablePath, processWorkingDirectory, environmentBlock };
+
 	printf("The game is now running. The ABiT launcher will stop once the game quits.\n");
 	printf(
 		"Game process handle: %p, thread handle: %p\n", gameProcess.handle, gameProcess.threadHandle
@@ -100,8 +116,13 @@ LauncherMain()
 
 }
 
+#ifndef NDEBUG
 int
-main()
+main(void)
+#else
+int WINAPI
+wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
+#endif
 {
 	try {
 		abit::LauncherMain();

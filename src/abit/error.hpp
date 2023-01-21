@@ -3,12 +3,11 @@
 #include <exception>
 #include <string>
 
-#include "abit/abit.hpp"
 #include "fmt/format.h"
 
 namespace abit {
 
-struct ABIT_API Error : std::exception
+struct Error : std::exception
 {
 	std::string message;
 

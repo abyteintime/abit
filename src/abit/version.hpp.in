@@ -1,7 +1,5 @@
 #pragma once
 
-#include "abit/abit.hpp"
-
 namespace abit {
 
 static const char* version = "@ABIT_VERSION@";

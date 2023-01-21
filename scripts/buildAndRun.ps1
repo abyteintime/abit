@@ -1,3 +1,7 @@
+param (
+	[switch] $Release = $false
+)
+
 Write-Output ""
 Write-Output "------------------------------"
 Write-Output "BUILD"
@@ -14,6 +18,9 @@ Write-Output ""
 Write-Output "------------------------------"
 Write-Output "RUN"
 Write-Output ""
-$cwd = Get-Location
-$env:PATH = "$env:PATH;$cwd\build"
-.\build\AByteInTime.exe
+if ($Release) {
+	.\build\bin\Release\AByteInTime.exe
+}
+else {
+	.\build\bin\Debug\AByteInTime.exe
+}

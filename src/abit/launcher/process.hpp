@@ -9,7 +9,11 @@ namespace abit {
 
 struct Process
 {
-	Process(std::wstring_view executablePath, std::wstring_view workingDirectory);
+	Process(
+		std::wstring_view executablePath,
+		std::wstring_view workingDirectory,
+		std::wstring environment
+	);
 	~Process();
 
 	void WaitForExit();

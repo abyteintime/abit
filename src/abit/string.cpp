@@ -14,11 +14,12 @@ abit::Widen(std::string_view string)
 		return L"";
 	}
 
-	int sizeNeeded =
-		MultiByteToWideChar(CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), nullptr, 0);
+	int sizeNeeded = MultiByteToWideChar(
+		CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), nullptr, 0
+	);
 	if (sizeNeeded <= 0) {
-		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " } +
-					 std::to_string(sizeNeeded) };
+		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " }
+					 + std::to_string(sizeNeeded) };
 	}
 
 	std::wstring result(sizeNeeded, 0);
@@ -39,8 +40,8 @@ abit::Narrow(std::wstring_view string)
 		CP_UTF8, 0, &string.at(0), static_cast<int>(string.size()), nullptr, 0, nullptr, nullptr
 	);
 	if (sizeNeeded <= 0) {
-		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " } +
-					 std::to_string(sizeNeeded) };
+		throw Error{ std::string{ "MultiByteToWideChar() failed with error code " }
+					 + std::to_string(sizeNeeded) };
 	}
 
 	std::string result(sizeNeeded, 0);
@@ -97,4 +98,18 @@ abit::StringToUpperAscii(std::string_view string)
 		result += CharToUpperAscii(c);
 	}
 	return result;
+}
+
+bool
+abit::StartsWithCaseInsensitive(std::wstring_view string, std::wstring_view prefix)
+{
+	if (string.size() < prefix.size()) {
+		return false;
+	}
+	for (size_t i = 0; i < prefix.size(); ++i) {
+		if (CharToLowerAscii(string[i]) != CharToLowerAscii(prefix[i])) {
+			return false;
+		}
+	}
+	return true;
 }

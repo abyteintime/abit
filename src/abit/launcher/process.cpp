@@ -6,7 +6,11 @@
 
 using namespace abit;
 
-Process::Process(std::wstring_view executablePath, std::wstring_view workingDirectory)
+Process::Process(
+	std::wstring_view executablePath,
+	std::wstring_view workingDirectory,
+	std::wstring environment
+)
 {
 	STARTUPINFOW startupInfo = { sizeof(STARTUPINFOW) };
 	PROCESS_INFORMATION processInfo;
@@ -16,8 +20,8 @@ Process::Process(std::wstring_view executablePath, std::wstring_view workingDire
 			nullptr,
 			nullptr,
 			true,
-			CREATE_SUSPENDED,
-			nullptr,
+			CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+			reinterpret_cast<void*>(environment.data()),
 			workingDirectory.data(),
 			&startupInfo,
 			&processInfo

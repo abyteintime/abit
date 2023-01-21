@@ -4,6 +4,7 @@ configure_file("version.hpp.in" "version.hpp")
 set(ABIT_COMMON_SOURCES
 	"config.cpp"
 	"config_default.cpp"
+	"env.cpp"
 	"error.cpp"
 	"io.cpp"
 	"map.cpp"
