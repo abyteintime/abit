@@ -1,218 +1,232 @@
 # Patches
 
-The high-level design of Yarnbox, describing the sort of patching functionality it is meant to
-support in the end.
+Reference documentation for Yarnbox patchfiles.
 
-## Configuration
+## Overview
 
-To actually apply patches, we need to have UnrealScript bytecode ready. This process is handled
-while cooking the mod using the official Hat in Time modding tools (via the Compile Scripts button.)
+Yarnbox can be instructed that a mod contains patches by putting a file called `Yarnbox.Patches.lua`
+next to your mod's `modinfo.ini` file. A `Yarnbox.Patches.lua` file is called a _patchfile_ and
+contains instructions for Yarnbox on what sort of patches to apply.
 
-Yarnbox needs to know which functions to apply patches to, and that is done using the
-`Yarnbox.Patches.json` file inside the mod's directory.
+## Syntax
 
-The overall file structure is as follows:
+Patchfiles follow the usual [Lua] syntax. Of note is the fact that unlike UnrealScript,
+**Lua identifiers are case-sensitive**, so you cannot mix casings freely.
 
-```json
-{
-  "version": 1,
-  "patches": []
+[Lua]: https://lua.org/
+
+### Lua overview
+
+The most important bits of Lua syntax Yarnbox makes use of are tables and function calls.
+Tables are the standard data structure in Lua, and allow for specifying sets of key-value mappings.
+If you've dealt with hash maps or dictionaries in other languages, tables will be quite familiar.
+
+Tables use the following syntax:
+
+```lua
+-- Assign a table to the global variable `myTable`.
+myTable = {
+    key1 = value1,
+    key2 = value2,
 }
 ```
 
-The version number will be incremented if any breaking changes are made. Yarnbox will do its best
-to maintain backwards compatibility of this file but warnings may be emitted during mod loading if
-a mod built for an older version of Yarnbox is loaded into the game. If certain features change in
-a backwards-incompatible way, Yarnbox will not load the mod's patches and will emit an error.
+Note that `key = value` pairs must be separated with commas. A trailing comma is allowed after the
+last element, and for ease of maintenance I recommend always using it.
 
-The paragraphs below refer solely to the `patches` array; read the JSON examples as if they describe
-only that array.
+Yarnbox uses the convention of table keys being `camelCase`d.
 
-## Chunks
+Functions in Lua have three ways of calling them:
 
-Before we get started with the dark magic of patching, we first need to understand what it is that
-we're patching in the first place.
+```lua
+-- Call MyFunction with the arguments 1, 2, 3.
+MyFunction(1, 2, 3)
 
-Unreal Engine uses a rather peculiar class hierarchy in its reflection system. The base class of
-all things executable is `UStruct`, and there are two types of code chunks: `UFunction` and
-`UState`. Technically speaking there's also `UClass`, but classes never contain bytecode on their
-own.
+-- Call a function with a single string argument.
+-- The space between the function name and string is optional.
+-- Strings may use single or double quotes; the syntaxes are equivalent.
+-- By convention, single quotes and no space should be used when referring to objects in Yarnbox's
+-- registry, such as functions, so as to mimic UnrealScript.
+print "Hello!"
+Function'Hello'
 
-A `UFunction` represents a function, declared like so in UnrealScript:
-
-```unrealscript
-function Example()
-{
-  // function code goes here
+-- Call a function with a single table argument.
+Dance {
+    smugly = true,
+    bpm = 128,
 }
 ```
 
-This class is also used for `event`s, since they're the same as functions. The difference is that
-events can be called by C++ code.
+If a function returns another function, we can chain the function calls, leading to a pattern known
+as _currying_. This pattern is used in Yarnbox for implementing patch specifiers (described later).
 
-A `UState` represents a state, declared as follows in UnrealScript:
-
-```unrealscript
-state Walking
-{
-  // state code goes here
+```lua
+-- injection returns a function that when called with a table adds a new injection patch to
+-- the list.
+injection "Does some stuff" {
+    -- ...
 }
 ```
 
-You can refer to the [UnrealScript reference](https://docs.unrealengine.com/udk/Three/UnrealScriptReference.html)
-for more details on how these work.
+You can read more about Lua's syntax in [their manual](https://www.lua.org/manual/5.4/manual.html).
 
-Each `UStruct` that is detected by Yarnbox is saved into a registry, and can be later recalled using
-its **path name**. The path name is determined by walking the outer object chain. In reality, this
-means that path names can be one of four things:
+### Patch specifiers
 
-- `Package.Class`
-- `Package.Class.Function`
-- `Package.Class.Function.State`
-- `Package.Class.Function.State.StateFunction`
+Yarnbox uses the syntax `patchtype "comment" {}` to add new patches to the patchfile. Note that
+although `patchtype` names are usually spelled with all lowercase letters, aliases exist that also
+allow you to spell them with `camelCase` (like `patchType`) and `PascalCase` (like `PatchType`.)
 
-For example, the path name for the player pawn class is `HatinTimeGameContent.Hat_Player`.
-The path name of the player pawn class's Tick function is `HatinTimeGameContent.Hat_Player.Tick`.
+The patch comment is primarily used for error reporting, so that you can easily identify which patch
+failed to apply. By convention, the patch comment should be a single sentence describing what the
+patch does.
 
-Each piece of bytecode collected into the registry like this is called a **chunk**. Each chunk
-contains a reference to its corresponding `UStruct` instance, as well as bytecode disassembly and
-analysis data. This data is produced on-demand for injection patches.
+### Object references
 
-## Replacements
+Yarnbox also exposes a bunch of functions that let you refer to various objects it collects into
+its registry. As mentioned before, the general syntax is `Type'Path'`, to refer to an object of the
+given `Type` at the given `Path`.
 
-Replacements are the simplest type of patch. They replace a function's bytecode completely
-with the bytecode of a different, but compatible function. Replacements are specified using
-`Replacement`-type entries inside `Yarnbox.Patches.json`, and look like so:
+The `Path` is case-insensitive, so `Type'path'` and `Type'PATH'` refer to the same object. The
+`Type` however, being a regular Lua identifier, is not, so `Type'path'` will work, but `type'path'`
+will cause an error in your patchfile.
 
-```json
-[{
-  "type": "Replacement",
-  "comment": "Let the player move in the Peace and Tranquility menu",
-  "chunk": "MyMod.MyMod_PnTReplacements.DisablesMovement",
-}]
-```
+Paths follow one of the following forms:
 
-The specified `chunk` must be a function in a class that extends the base class the function is
-being replaced in. For example, for `MyMod_PnTReplacements` to contain replacements for
-`Hat_HUDMenu_HatKidDance`, we make it extend that class:
+- `Package.Class` - class path
+- `Package.Class.Function` - function path
+- `Package.Class.State` - state path
+- `Package.Class.State.Function` - state function path
 
-```unrealscript
-class MyMod_PnTReplacements extends Hat_HUDMenu_HatKidDance;
-```
+The following types of objects can be referred to:
 
-The name of the replaced function should be the same inside the class containing the replacement.
+- `Function` - refers to a function within a class or a state. This only works with function and
+  function state paths. Example: `Function'HatinTimeGameContent.Hat_HUDMenu_HatKidDance.OnOpenHUD'`
 
-```unrealscript
-function bool DisablesMovement(HUD H)
-{
-  // 😈
-  return false;
+## Patch types
+
+The following sections describe which types of patches Yarnbox supports.
+
+### Injections
+
+Injections are the bread and butter of patching. By far they're going to be your most commonly used
+tool when patching the game.
+
+Injections allow you to modify existing functions in the game with custom behavior. Use cases
+include changing otherwise hardcoded values, fixing bugs, and other small tweaks.
+
+To specify a set of injections, of which all must be applied to work correctly, we use
+`injectionset`:
+
+```lua
+injectionset "My set of injections" {
+    {
+        into = chunk,
+        select = queryOrQueries,
+        generate = bytecodeToGenerate,
+    },
+    {
+        into = chunk,
+        select = queryOrQueries,
+        generate = bytecodeToGenerate,
+    },
 }
 ```
 
-The signatures of both functions must be the same - their return type and parameters must match.
+An injection set is all-or-nothing: if any one of the injections inside the set fails to apply, no
+injections from the set will end up being applied.
 
-## Injections
+To specify a single injection that can be applied independently, we use `injection`:
 
-Injections are a more complex type of patch; instead of replacing a function completely, they
-insert bytecode into it.
-
-Injections use `Injection`-type entries, like so:
-
-```json
-[{
-  "type": "Injection",
-  "comment": "Injects into some game code",
-  "inject": [...]
-}]
-```
-
-The `inject` array specifies a list of injections to apply.
-Each injection is an object with the following fields:
-
-```json
-{
-  "into": "Chunk.To.Inject.Into",
-  "select": [...],
-  "action": "Insert",
-  "place": {...}
+```lua
+injection "My injection" {
+    into = chunk,
+    select = queryOrQueries,
+    generate = bytecodeToGenerate,
 }
 ```
 
-Injections are applied in sequence from top to bottom.
+The three properties of an injection are as follows:
+
+- `into` - specifies the chunk of bytecode to inject into.
+- `select` - specifies which spans of bytecode inside the chunk Yarnbox should inject into.
+- `generate` - specifies what to generate at the selected spans of bytecode.
 
 ### Queries
 
-Each element in the `select` array is a query. Each query must be an _opcode query_ object:
+The `select` property is a list of _queries_. Queries are used for selecting spans of bytecode
+inside the chunk. Currently the only supported query type is an opcode query, which takes the form:
 
-```json
+```lua
+Opcode.type{occurrences}.pick
+-- or
+Opcode.type(AllOccurrences).pick
+```
+
+`type` should be replaced with an opcode type, a list of which can be found [here](opcodes.md).
+
+`occurrences` should be replaced with a list of numbers. Each number in the list is an
+_occurrence index_, which specifies which occurrence of an opcode to choose. This number must be
+either positive or negative, but never zero. Positive numbers search from the start, and
+negative numbers search from the end.
+
+Given that, index `1` is the very first opcode of a given type, and index `-1` is the very last
+opcode of a given type.
+
+The `AllOccurrences` form selects all occurrences of a given opcode, and is useful for injecting
+code before all `Return`s, for example.
+
+`pick` should be replaced with `Start`, `End`, or `Span`. This specifies which part of the
+instruction to select. Choosing `Start` will prepend bytecode before the selected span, `End` will
+append bytecode after the selected span, and `Span` will replace the selected span with the
+generated bytecode.
+
+Examples of valid opcode queries:
+
+- `Opcode.VirtualFunction{3, 4}.Span` - replace the 3rd and 4th virtual function call
+- `Opcode.JumpIfNot{-1}.End` - insert after the last `if` statement
+- `Opcode.Return(AllOccurrences).Start` - insert before all `return` statements
+
+### Generators
+
+Yarnbox facilitates inserting new bytecode into the existing function using _bytecode generators._
+At the moment only one generator is available - `StaticFinalFunctionCall`, or SFFC for short:
+
+```lua
+StaticFinalFunctionCall(func)
+StaticFinalFunctionCall(func, { options })
+```
+
+As the name suggests, it generates a call to a `static final` function. The basic usage is as
+follows:
+
+```lua
+StaticFinalFunctionCall(Function'ExampleMod.ExMod_Injections.SomeFunction')
+```
+
+The function on the UnrealScript side must have no arguments, and when replacing an expression that
+produces some result, it must have the same return type as that expression. Note that this is not
+validated in any way, so take care.
+
+```unrealscript
+// The class we extend does not matter; usually we want it to be Object.
+class ExMod_Injections extends Object;
+
+// If we're replacing an expression that normally produces an int, our function also has to return
+// an int.
+function int SomeFunction()
 {
-  "opcode": "OpcodeToSearchFor",
-  "which": [0, 1, 2],
-  "pick": "Span"
+    return 42;
 }
 ```
 
-Every query produces zero or more `start..end` spans that are then replaced with something else.
-A span can be _zero-sized_, which means that its start is the same as its end, and it effectively
-points to a single point in the bytecode. Thus injecting into a zero-sized span inserts bytecode
-instead of replacing it.
+The more advanced form of `StaticFinalFunctionCall` accepts a table of options. The currently
+supported set of options (and their default values) is as follows:
 
-The `"head"` query produces a zero-sized span which points to the beginning of the chunk, right
-after the function arguments.
-
-The opcode query searches for occurrences of the given opcode within the chunk.
-
-- `opcode` defines which opcode should be searched for.
-- `which` defines which occurrences should be targeted, and can be `"all"` to target all
-  occurrences. The numbers in the array can be negative, which means that occurrences will be
-  counted from the end.
-- `pick` defines which part of the span should be worked on. `"Span"` selects the full span
-  `start..end`, `"Start"` picks the zero-sized span `start..start`, and `"End"` picks the
-  zero-sized span `end..end`.
-
-If an injection produces zero queries, a warning is emitted to signal that the patch effectively
-did not get applied to anything.
-
-### Bytecode generation
-
-Last but not least, there's the `place` field. This field specifies what kind of bytecode to
-place at the selected spans.
-
-#### `StaticFinalFunctionCall`
-
-`StaticFinalFunctionCall` generates, as the name suggests, a call to a static final function.
-
-```json
-{
-  "type": "StaticFinalFunctionCall",
-  "function": "Your.Function.To.Call"
-}
+```lua
+StaticFinalFunctionCall(func, {
+    captureSelf = false,
+})
 ```
 
-### Injections are transactions
-
-The golden rule of all injections is that an `Injection`-type patch is like a transaction - it's a
-single atomic unit that must be applied in its entirety. If one injection of a single
-`Injection`-type patch fails to apply, then _no_ injections from the same patch will be applied.
-This can (and should) be used to make sure that functionality does not stay broken if some injection
-fails.
-
-### Safety first
-
-Injections are not checked for correctness besides a few basic checks at the moment. Extra
-validation may get added in the future, but in the meantime it is largely the modder's job to ensure
-the generated bytecode is type-safe.
-
-While Yarnbox will refuse to inject bytecode that doesn't make sense at least _structurally_,
-it does not check the _semantics_ of the injections it produces. For example, it will not prevent
-you from creating an injection that replaces an expression producing a `bool` with a call to a
-function that produces a `string`. These kinds of type-unsafe patches in fact trigger undefined
-behavior within the game's C++ code, so be ready for crashes if you perform this kind of
-tomfoolery.
-
-### Example injection
-
-For a complete example of how injections can be used to modify the game, please take a look at the
-the PeacefulAndTranquilForever mod, which patches the Peace and Tranquility screen to play the
-"No one is around to help" animation forever. It's a softlock, but at least it's a fun one!
+- `captureSelf` - captures `self` into the first argument of the function call.
+  Instead of generating a plain call like `SomeFunction()`, it'll generate `SomeFunction(self)`.
