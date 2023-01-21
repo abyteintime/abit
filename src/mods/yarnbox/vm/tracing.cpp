@@ -2,7 +2,7 @@
 
 #include "abit/loader/logging.hpp"
 
-#include "abit/procs/global.hpp"
+#include "abit/procs/3d.hpp"
 
 #include "abit/ue/FFrame.hpp"
 #include "abit/ue/UObject.hpp"
@@ -41,7 +41,7 @@ template<size_t Base>
 static inline void
 InjectTracingNativesInner()
 {
-	NativeFunc* natives = abit::procs::global::GNatives.As<NativeFunc>();
+	NativeFunc* natives = abit::procs::G_3de4cdbe920d9e3dfbcfcca2b19b3ab7_0.As<NativeFunc>();
 
 	for (size_t i = 0; i < 256; ++i) {
 		size_t op = Base * 256 + i;

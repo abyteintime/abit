@@ -6,21 +6,14 @@
 #include "abit/loader/logging.hpp"
 #include "abit/loader/patches.hpp"
 
-#include "abit/procs/UHat_ChapterInfo.hpp"
-#include "abit/procs/UHat_GlobalTimer.hpp"
+#include "abit/procs/90.hpp"
+#include "abit/procs/e0.hpp"
 
-float (*O_GetGameTime)();
+static float (*O_GetGameTime)();
 static float
 GetGameTime()
 {
 	return 4.f * 60.f + 20.f;
-}
-
-float (*O_GetActTime)();
-static float
-GetActTime()
-{
-	return 21.f * 60.f + 37.f;
 }
 
 static int32_t (*O_GetTotalTimePieceCount)();
@@ -33,10 +26,9 @@ GetTotalTimePieceCount()
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
-	abit::Patch(abit::procs::UHat_GlobalTimer::GetGameTime, GetGameTime, O_GetGameTime);
-	abit::Patch(abit::procs::UHat_GlobalTimer::GetActTime, GetActTime, O_GetActTime);
+	abit::Patch(abit::procs::P_e09fc84f7eff2eef5e637fdf1ca84153_0, GetGameTime, O_GetGameTime);
 	abit::Patch(
-		abit::procs::UHat_ChapterInfo::GetTotalTimePieceCount,
+		abit::procs::P_901b4e3ea33ba7f82dc72aaf6aebd1c5_0,
 		GetTotalTimePieceCount,
 		O_GetTotalTimePieceCount
 	);

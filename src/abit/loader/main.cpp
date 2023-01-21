@@ -17,7 +17,7 @@
 #include "abit/loader/mod.hpp"
 #include "abit/loader/patches.hpp"
 
-#include "abit/procs/global.hpp"
+#include "abit/procs/00.hpp"
 #include "abit/procs/init.hpp"
 
 #include "spdlog/sinks/sink.h"
@@ -73,8 +73,8 @@ ModsDeinit()
 namespace patches {
 
 using GuardedMainWrapperType = int(__cdecl*)(wchar_t*, HINSTANCE, HINSTANCE, int);
-GuardedMainWrapperType O_GuardedMainWrapper = nullptr;
-int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
+GuardedMainWrapperType O_Main = nullptr;
+int __cdecl Main(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 {
 	spdlog::debug("GuardedMainWrapper was patched successfully! \\o/");
 
@@ -88,7 +88,7 @@ int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 					  "completely unavailable.");
 	}
 
-	int result = O_GuardedMainWrapper(a, b, c, d);
+	int result = O_Main(a, b, c, d);
 
 	try {
 		ModsDeinit();
@@ -140,12 +140,8 @@ LoaderInit()
 	spdlog::debug("Initializing patching library");
 	InitializePatches();
 
-	spdlog::debug("Patching GuardedMainWrapper");
-	Patch(
-		procs::global::GuardedMainWrapper,
-		&patches::GuardedMainWrapper,
-		patches::O_GuardedMainWrapper
-	);
+	spdlog::debug("Patching into main function");
+	Patch(procs::P_00624069979cd78d26bf7f3edb4df0fa_0, &patches::Main, patches::O_Main);
 
 	spdlog::debug("LoaderInit done.");
 }

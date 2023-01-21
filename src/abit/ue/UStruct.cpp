@@ -1,13 +1,13 @@
 #include "abit/ue/UStruct.hpp"
 
-#include "abit/procs/UStruct.hpp"
+#include "abit/procs/d8.hpp"
 
 using namespace ue;
 
 struct UClass*
 UStruct::StaticClass()
 {
-	return abit::procs::UStruct::StaticClass.Call<struct UClass*>();
+	return abit::procs::P_d8699dbef475aab31a813e5ddc80c6bb_0.Call<struct UClass*>();
 }
 
 bool

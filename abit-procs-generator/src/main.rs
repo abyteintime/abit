@@ -1,4 +1,5 @@
 mod codegen;
+mod filter;
 mod pdbfile;
 
 use std::{collections::HashMap, fs::File, path::PathBuf};
@@ -6,8 +7,12 @@ use std::{collections::HashMap, fs::File, path::PathBuf};
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use log::{error, info, LevelFilter};
+use pdbfile::Namespace;
 
-use crate::codegen::{generate_definitions, generate_header, generate_mappings};
+use crate::{
+    codegen::{generate_definitions, generate_header, generate_mappings},
+    filter::is_internal_symbol,
+};
 
 #[derive(Parser)]
 struct Args {
@@ -39,15 +44,22 @@ fn fallible_main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let pdb_file = File::open(args.pdb).context("cannot open PDB file")?;
-    let namespaces = pdbfile::read_pdb(pdb_file).context("cannot read symbols from PDB file")?;
-    let symbol_count = namespaces
-        .values()
-        .map(|ns| ns.symbols.len())
-        .sum::<usize>();
+    let mut namespaces =
+        pdbfile::read_pdb(pdb_file).context("cannot read symbols from PDB file")?;
+
+    let symbol_count = count_symbols(&namespaces);
     info!(
         "{} namespaces with {symbol_count} symbols total",
         namespaces.len()
     );
+
+    namespaces.values_mut().for_each(|ns| {
+        ns.symbols
+            .retain(|_, group| !is_internal_symbol(&group.overloads[0].demangled_name))
+    });
+
+    let symbol_count = count_symbols(&namespaces);
+    info!("{symbol_count} symbols after filtering");
 
     match &args.command {
         Command::Addresses {
@@ -93,6 +105,13 @@ fn fallible_main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn count_symbols(namespaces: &HashMap<String, Namespace>) -> usize {
+    namespaces
+        .values()
+        .map(|ns| ns.symbols.len())
+        .sum::<usize>()
 }
 
 fn main() {
