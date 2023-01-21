@@ -66,6 +66,10 @@ ABiT is split into a few modules, each one fulfilling a single purpose:
   - Other compilers (such as MSVC) are not tested. Beware.
 - CMake >= 3.24
 - Ninja >= 1.11
+- Rust >= 1.66
+  - Can be disabled by passing `-DABIT_GENERATE_PROCS=OFF -DABIT_GENERATE_MAPPINGS=OFF` to CMake,
+    but the build may not work for your version of the game and function name mappings will not be
+    available.
 - A Hat in Time
   - Also the Modding Tools, if you wish to build Yarnbox mods.
 

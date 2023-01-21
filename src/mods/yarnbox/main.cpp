@@ -10,9 +10,9 @@
 #include "abit/loader/logging.hpp"
 #include "abit/loader/patches.hpp"
 
-#include "abit/procs/FEngineLoop.hpp"
-#include "abit/procs/UObject.hpp"
-#include "abit/procs/UStruct.hpp"
+#include "abit/procs/45.hpp"
+#include "abit/procs/85.hpp"
+#include "abit/procs/f3.hpp"
 
 #include "yarnbox/config/config.hpp"
 #include "yarnbox/patcher.hpp"
@@ -33,10 +33,6 @@
 #include "abit/ue/UObject.hpp"
 #include "abit/ue/UObject/fmt.hpp"
 #include "abit/ue/UStruct.hpp"
-
-#include "abit/procs/FMaterialResource.hpp"
-#include "abit/procs/FName.hpp"
-#include "abit/procs/global.hpp"
 
 using namespace yarn;
 using namespace ue;
@@ -146,7 +142,7 @@ PostInit()
 	spdlog::info("Yarnbox PostInit: we'll now try to load and apply patch lists from mods.");
 	TArray<FString> localModPackages;
 	TArray<FString> localModPaths;
-	AGameMod::GetLocalModPackagesAndPaths(localModPackages, localModPaths);
+	AGameMod::GetInstalledModPackagesAndPaths(localModPackages, localModPaths);
 	for (size_t i = 0; i < localModPackages.length; ++i) {
 		const FString& modPackage = localModPackages[i];
 		const FString& modPath = localModPaths[i];
@@ -196,50 +192,18 @@ FEngineLoop_Init(class FEngineLoop* self)
 	PostInit();
 }
 
-class UMaterial : UObject
-{};
-
-struct FMaterialResource
-{
-	uint8_t __padding__[196];
-	uint32_t blendMode;
-};
-
-static void (*O_FMaterialResource_FMaterialResource)(FMaterialResource*, UMaterial*);
-static void
-FMaterialResource_FMaterialResource(FMaterialResource* self, UMaterial* mat)
-{
-	O_FMaterialResource_FMaterialResource(self, mat);
-	if (self->blendMode == 1) {
-		self->blendMode = 0;
-	}
-}
-
-static void (*O_FMaterialResource_Serialize)(FMaterialResource*, FArchive*);
-static void
-FMaterialResource_Serialize(FMaterialResource* self, FArchive* ar)
-{
-	O_FMaterialResource_Serialize(self, ar);
-	if (self->blendMode == 1) {
-		self->blendMode = 0;
-	}
-}
-
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
-	abit::Patch(abit::procs::UStruct::Serialize, &UStruct_Serialize, O_UStruct_Serialize);
-	abit::Patch(abit::procs::FEngineLoop::Init, &FEngineLoop_Init, O_FEngineLoop_Init);
-	abit::Patch(abit::procs::UObject::CallFunction, &UObject_CallFunction, O_UObject_CallFunction);
-
 	abit::Patch(
-		abit::procs::FMaterialResource::FMaterialResource,
-		&FMaterialResource_FMaterialResource,
-		O_FMaterialResource_FMaterialResource
+		abit::procs::P_f33dc06aa49236b90c34c238939957ed_0, &UStruct_Serialize, O_UStruct_Serialize
 	);
 	abit::Patch(
-		abit::procs::FMaterialResource::Serialize,
-		&FMaterialResource_Serialize,
-		O_FMaterialResource_Serialize
+		abit::procs::P_85f1ac5a2c2b21f1f2acaec841fbf2ee_0, &FEngineLoop_Init, O_FEngineLoop_Init
+	);
+	abit::Patch(
+		abit::procs::P_454995371fd28a4e9b74ce977c9714cb_0,
+		&UObject_CallFunction,
+		O_UObject_CallFunction
 	);
 }

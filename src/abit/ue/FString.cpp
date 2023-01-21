@@ -2,7 +2,7 @@
 
 #include "abit/string.hpp"
 
-#include "abit/procs/FString.hpp"
+#include "abit/procs/23.hpp"
 
 #include "abit/ue/memory.hpp"
 
@@ -30,7 +30,8 @@ FString::FString(FString&& other)
 
 FString::~FString()
 {
-	abit::procs::FString::_destructor.Call<void>(this);
+	// Call original destructor.
+	abit::procs::P_2317a143876211e590ec20a6506eb0fc_0.Call<void>(this);
 }
 
 std::wstring_view

@@ -7,7 +7,7 @@ namespace ue {
 
 struct AGameMod
 {
-	static void GetLocalModPackagesAndPaths(
+	static void GetInstalledModPackagesAndPaths(
 		TArray<FString>& outLocalModPackages,
 		TArray<FString>& outLocalModPaths
 	);
