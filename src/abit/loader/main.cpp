@@ -37,8 +37,8 @@ ModsInit()
 
 	if (!std::filesystem::is_directory(nativeModsDirectory)) {
 		throw Error{ std::string("NativeMods directory does not exist, so there's nowhere to load "
-								 "mods from (looked for path ") +
-					 nativeModsDirectory.string() + ")" };
+								 "mods from (looked for path ")
+					 + nativeModsDirectory.string() + ")" };
 	}
 
 	for (const std::filesystem::directory_entry directoryEntry :
@@ -55,7 +55,7 @@ ModsInit()
 					mod.CallModInit();
 					loadedMods.push_back(std::move(mod));
 				} catch (abit::Error error) {
-					spdlog::error("Mod {} failed to load: {}", modName, error.what);
+					spdlog::error("Mod {} failed to load: {}", modName, error.message);
 				}
 			} else {
 				spdlog::info("Loading {} SKIPPED (mod is disabled)", modName);
@@ -83,7 +83,7 @@ int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 	try {
 		ModsInit();
 	} catch (abit::Error error) {
-		spdlog::error("in abit::ModsInit: {}", error.what);
+		spdlog::error("in abit::ModsInit: {}", error.message);
 		spdlog::error("NOTE: Due to this error, native mod functionality may be partially or "
 					  "completely unavailable.");
 	}
@@ -93,7 +93,7 @@ int __cdecl GuardedMainWrapper(wchar_t* a, HINSTANCE b, HINSTANCE c, int d)
 	try {
 		ModsDeinit();
 	} catch (abit::Error error) {
-		spdlog::error("in abit::ModsDeinit: {}", error.what);
+		spdlog::error("in abit::ModsDeinit: {}", error.message);
 	}
 	abit::DeinitializeLogging();
 
@@ -162,7 +162,7 @@ DllMain(HINSTANCE inDll, DWORD callReason, LPVOID)
 		try {
 			abit::LoaderInit();
 		} catch (abit::Error error) {
-			spdlog::error("in abit::LoaderInit: {}", error.what);
+			spdlog::error("in abit::LoaderInit: {}", error.message);
 			return false;
 		}
 	}

@@ -39,9 +39,9 @@ struct UObject
 	bool InstanceOf(struct UClass* type) const;
 
 	template<typename T>
-	bool Is() const
+	bool InstanceOf() const
 	{
-		return Is(T::StaticClass());
+		return InstanceOf(T::StaticClass());
 	}
 
 private:

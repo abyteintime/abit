@@ -64,7 +64,7 @@ Rules may capture variables which can be referred to in the description, with th
 
 ## Disclaimer
 
-The following table may be incooabsmplete. Actual bytecode may contain instructions that are not (yet)
+The following table may be incomplete. Actual bytecode may contain instructions that are not (yet)
 in this table; ie. instructions that are registered dynamically and do not appear in Ghidra.
 
 As mentioned before, the actual names of certain dynamically registered instructions may be my best

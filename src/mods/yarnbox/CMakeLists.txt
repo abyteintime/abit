@@ -1,3 +1,7 @@
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "config/bootstrap.lua")
+file(READ "config/bootstrap.lua" YARNBOX_BOOTSTRAP_LUA_CONTENT)
+configure_file("config/bootstrap.cpp.in" "config/bootstrap.cpp")
+
 set(YARNBOX_SOURCES
 	"bytecode/codegen.cpp"
 	"bytecode/disassembler.cpp"
@@ -10,7 +14,10 @@ set(YARNBOX_SOURCES
 
 	"vm/tracing.cpp"
 
-	"config.cpp"
+	"config/config.cpp"
+	"config/bootstrap.cpp"
+	"config/opcode.cpp"
+
 	"registry.cpp"
 	"patcher.cpp"
 
@@ -22,7 +29,7 @@ target_link_libraries(Yarnbox
 	AByteInTime.Common
 	AByteInTime.Loader.API
 	AByteInTime.UnrealEngine
-	nlohmann_json::nlohmann_json
+	sol2
 )
 set_target_properties(Yarnbox PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${ABIT_MODS_DIRECTORY}

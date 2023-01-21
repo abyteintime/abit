@@ -8,7 +8,7 @@
 using namespace abit;
 
 Error::Error(std::string what)
-  : what(std::move(what))
+	: message(std::move(what))
 {
 }
 
@@ -17,4 +17,10 @@ Error::System(std::string_view _what)
 {
 	int code = GetLastError();
 	return Error{ std::string(_what) + ": " + std::system_category().message(code) };
+}
+
+const char*
+Error::what() const noexcept
+{
+	return message.c_str();
 }

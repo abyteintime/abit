@@ -73,8 +73,8 @@ LauncherMain()
 	if (kernel32 == nullptr) {
 		throw Error::System("failed to get handle to the kernel32 DLL");
 	}
-	auto* loadLibraryW =
-		reinterpret_cast<LPTHREAD_START_ROUTINE>(GetProcAddress(kernel32, "LoadLibraryW"));
+	auto* loadLibraryW
+		= reinterpret_cast<LPTHREAD_START_ROUTINE>(GetProcAddress(kernel32, "LoadLibraryW"));
 	printf("LoadLibraryW inside kernel32.dll (%p) is at %p\n", kernel32, loadLibraryW);
 
 	HANDLE remoteThread = CreateRemoteThread(
@@ -107,7 +107,7 @@ main()
 		abit::LauncherMain();
 		return 0;
 	} catch (abit::Error e) {
-		printf("ERROR (during abit::LauncherMain): %s\n", e.what.c_str());
+		printf("ERROR (during abit::LauncherMain): %s\n", e.what());
 		return 1;
 	}
 }
