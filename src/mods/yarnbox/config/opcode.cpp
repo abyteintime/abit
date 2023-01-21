@@ -38,7 +38,18 @@ MakeOpcodeQueryFromWrapper(LuaOpcodeQueryWrapper& wrapper)
 	if (wrapper.allOccurrences) {
 		query.which = Injection::OpcodeQuery::AllOccurrences{};
 	} else {
-		query.which = wrapper.indices;
+		// Adjust indices to follow a more sensible convention than our internal one.
+		for (int32_t& index : wrapper.indices) {
+			if (index == 0) {
+				throw abit::Error{
+					"occurrence indices must be either negative or positive, but never zero."
+					"If you wish to refer to the 1st occurrence, use index 1"
+				};
+			} else if (index > 0) {
+				index -= 1;
+			}
+		}
+		query.which = std::move(wrapper.indices);
 	}
 	query.pick = Pick;
 	return query;
