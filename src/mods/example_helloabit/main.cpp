@@ -5,5 +5,5 @@
 extern "C" ABIT_DLL_EXPORT void
 ABiT_ModInit()
 {
-	spdlog::info("Hello from the Example Mod!");
+	spdlog::info("Hello ABiT!");
 }

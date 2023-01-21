@@ -19,13 +19,25 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 # Options
 
 set(ABIT_HATINTIME_PATH "C:/Program Files (x86)/Steam/steamapps/common/HatinTime" CACHE PATH
-	"A Hat in Time installation directory")
+	"A Hat in Time installation directory. Required to point to a valid AHiT installation for ABIT_GENERATE_PROCS and ABIT_GENERATE_MAPPINGS to work.")
 
 set(ABIT_GENERATE_PROCS ON CACHE BOOL
 	"When enabled, ABiT will generate the sources for Procs instead of using the ones committed to the repository. Requires a valid installation directory to work.")
 
 set(ABIT_GENERATE_MAPPINGS ON CACHE BOOL
 	"When enabled, ABiT will generate a AByteInTime.Mappings.txt file inside the build directory, containing mappings from hashed proc names to demangled proc names from HatinTimeGame.pdb. Requires a valid installation directory to work.")
+
+set(ABIT_BUILD_EXAMPLE_MODS ON CACHE BOOL
+	"When enabled, example mods will be built.")
+
+set(ABIT_CI_BUILD OFF CACHE BOOL
+	"When enabled, the build will behave as if we were building on CI (procs/mapping generation will be disabled.)")
+
+if(${ABIT_CI_BUILD})
+	message(STATUS "CI build - procs and mapping generation will be disabled.")
+	set(ABIT_GENERATE_PROCS OFF)
+	set(ABIT_GENERATE_MAPPINGS OFF)
+endif()
 
 # Checks
 

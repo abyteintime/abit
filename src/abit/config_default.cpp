@@ -13,8 +13,7 @@ WorkingDirectory=C:\Program Files (x86)\Steam\steamapps\common\HatinTime
 
 [Mods]
 ; By default, all mods are enabled. Each mod can be disabled individually by using +Disable.
-+Disable=ExampleMod
-+Disable=Example.FourTwenty
+;+Disable=Yarnbox
 
 [Log]
 ; A Byte in Time includes a logger for more easily diagnosing what the loader and mods are doing.
