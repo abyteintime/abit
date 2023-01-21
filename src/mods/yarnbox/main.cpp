@@ -153,7 +153,7 @@ PostInit()
 		if (auto configPath = ModConfig::PathInModDirectory(modPath.ToWstringView())) {
 			spdlog::info(L"Applying patches for {}", modPackage.ToWstringView());
 			try {
-				ModConfig config = ModConfig::Load(*configPath);
+				ModConfig config = ModConfig::Load(*configPath, registry);
 				ApplyPatches(config.patches);
 			} catch (abit::Error e) {
 				spdlog::error("Applying patches failed: {}", e.message);

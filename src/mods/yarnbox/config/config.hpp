@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "yarnbox/patch.hpp"
+#include "yarnbox/registry.hpp"
 
 namespace yarn {
 
@@ -16,7 +17,7 @@ struct ModConfig
 	static std::optional<std::filesystem::path> PathInModDirectory(
 		const std::filesystem::path& modDirectory
 	);
-	static ModConfig Load(const std::filesystem::path& path);
+	static ModConfig Load(const std::filesystem::path& path, Registry& registry);
 };
 
 }

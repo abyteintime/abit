@@ -1,0 +1,5 @@
+#include "yarnbox/config/config.hpp"
+
+namespace yarn::config {
+const char* bootstrapLua = R"lua(@YARNBOX_BOOTSTRAP_LUA_CONTENT@)lua";
+}

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "abit/abit.hpp"
+#include "fmt/format.h"
 
 namespace abit {
 
@@ -16,6 +17,12 @@ struct ABIT_API Error : std::exception
 	/// Convert a system error into an `abit::Error`. Uses `GetLastError()` together with
 	/// `std::system_category` to create a nicer error message.
 	static Error System(std::string_view what);
+
+	template<typename... FmtArgs>
+	static Error Format(FmtArgs&&... args)
+	{
+		return Error{ fmt::format(std::forward<FmtArgs>(args)...) };
+	}
 
 	virtual const char* what() const noexcept;
 };

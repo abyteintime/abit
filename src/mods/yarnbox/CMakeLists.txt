@@ -1,3 +1,7 @@
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "config/bootstrap.lua")
+file(READ "config/bootstrap.lua" YARNBOX_BOOTSTRAP_LUA_CONTENT)
+configure_file("config/bootstrap.cpp.in" "config/bootstrap.cpp")
+
 set(YARNBOX_SOURCES
 	"bytecode/codegen.cpp"
 	"bytecode/disassembler.cpp"

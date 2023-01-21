@@ -130,23 +130,23 @@ InvalidateNodeData(BytecodeTree& tree, NodeIndex nodeIndex)
 static void
 PrepareInjection(InjectionState& state, const Injection& injection, Registry& registry)
 {
-	Chunk* chunk = registry.GetChunkByPointer(injection.into);
-	ABIT_ENSURE(chunk != nullptr, "target chunk {} is not patchable", UObjectFmt{ injection.into });
+	Chunk* chunk = injection.into;
+	ABIT_ENSURE(chunk != nullptr, "target chunk '{}' is not patchable", chunk->pathName);
 	UFunction* function = Cast<UFunction>(chunk->ustruct);
 	ABIT_ENSURE(
 		function != nullptr,
-		"target chunk {} is not a Function; it is a {}",
-		UObjectFmt{ injection.into },
+		"target chunk '{}' is not a Function; it is a {}",
+		chunk->pathName,
 		chunk->ustruct->objectClass->GetName().ToString()
 	);
 
 	auto [disasm, analysis] = chunk->GetOrPerformAnalysis();
 	ABIT_ENSURE(
 		disasm != nullptr,
-		"disassembly of chunk {} failed. Please report this on ABiT's GitHub",
-		UObjectFmt{ injection.into }
+		"disassembly of chunk '{}' failed. Please report this on ABiT's GitHub",
+		chunk->pathName
 	);
-	ABIT_ENSURE(analysis != nullptr, "analysis of chunk '{}' failed", UObjectFmt{ injection.into });
+	ABIT_ENSURE(analysis != nullptr, "analysis of chunk '{}' failed", chunk->pathName);
 
 	ChunkWorkingCopy* copy = state.GetWorkingCopyOfChunk(chunk, *disasm, *analysis);
 
@@ -305,7 +305,7 @@ ApplyInjection(const Patch& patch, const Patch::Injection& injections, Registry&
 	for (size_t i = 0; i < injections.inject.size(); ++i) {
 		const Injection& injection = injections.inject[i];
 		try {
-			spdlog::trace("Preparing injection #{} into {}", i, UObjectFmt{ injection.into });
+			spdlog::trace("Preparing injection #{} into '{}'", i, injection.into->pathName);
 			PrepareInjection(state, injection, registry);
 		} catch (abit::Error e) {
 			spdlog::error(

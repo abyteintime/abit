@@ -2,15 +2,16 @@
 
 #include <fstream>
 
+#include "fmt/format.h"
+
 #include "abit/error.hpp"
 
 std::vector<char>
 abit::ReadFile(const std::filesystem::path& path)
 {
-	std::ifstream stream{ path };
+	std::ifstream stream{ path, std::ios_base::binary };
 	if (!stream.is_open()) {
-		throw Error{ std::string("could not open stream for reading file (") + path.string()
-					 + ")" };
+		throw Error::Format("could not open stream for reading file ({})", path.string());
 	}
 
 	stream.seekg(0, std::ios_base::end);
@@ -27,10 +28,9 @@ abit::ReadFile(const std::filesystem::path& path)
 std::string
 abit::ReadFileToString(const std::filesystem::path& path)
 {
-	std::ifstream stream{ path };
+	std::ifstream stream{ path, std::ios_base::binary };
 	if (!stream.is_open()) {
-		throw Error{ std::string("could not open stream for reading file (") + path.string()
-					 + ")" };
+		throw Error::Format("could not open stream for reading file ({})", path.string());
 	}
 
 	stream.seekg(0, std::ios_base::end);
@@ -38,7 +38,7 @@ abit::ReadFileToString(const std::filesystem::path& path)
 	stream.seekg(0);
 
 	std::string bytes;
-	bytes.resize(fileSize);
+	bytes.resize(fileSize, '#');
 	stream.read(&bytes[0], fileSize);
 
 	return bytes;

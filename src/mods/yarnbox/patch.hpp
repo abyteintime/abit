@@ -9,6 +9,7 @@
 
 #include "yarnbox/bytecode/codegen.hpp"
 #include "yarnbox/bytecode/opcode.hpp"
+#include "yarnbox/registry.hpp"
 
 namespace yarn {
 
@@ -31,7 +32,7 @@ struct Injection
 		Pick pick;
 	};
 
-	ue::UFunction* into;
+	Chunk* into;
 	std::vector<OpcodeQuery> select;
 	std::shared_ptr<codegen::CodeGenerator> generate = nullptr;
 };

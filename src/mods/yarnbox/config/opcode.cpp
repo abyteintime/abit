@@ -69,7 +69,7 @@ config::LoadOpcodeIntoLua(sol::table& lib)
 	opcodeQueryWrapperType["End"]
 		= sol::readonly_property(&MakeOpcodeQueryFromWrapper<Injection::OpcodeQuery::Pick::End>);
 
-	sol::table opcode;
+	sol::table opcode = lib.create();
 
 #define YARN__EXPAND_OPCODE_INTO_WRAPPER_INSTANCE(Name, Index) \
 	opcode[#Name] = LuaOpcodeWrapper{ Opcode::Name };
