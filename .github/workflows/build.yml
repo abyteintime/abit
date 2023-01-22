@@ -68,5 +68,5 @@ jobs:
     - name: Upload artifact as release asset
       uses: AButler/upload-release-assets@v2.0
       with:
-        files: AByteInTime-win64.zip
+        files: './AByteInTime-win64.zip'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
