@@ -63,7 +63,7 @@ jobs:
       env:
         ABIT_PATH: ${{ steps.download-artifact.outputs.download-path }}
       run: |
-        Compress-Archive -Path $ABIT_PATH -DestinationPath AByteInTime-win64.zip
+        Compress-Archive -Path $env:ABIT_PATH -DestinationPath AByteInTime-win64.zip
 
     - name: Upload artifact as release asset
       uses: AButler/upload-release-assets@v2.0
