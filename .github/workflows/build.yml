@@ -11,7 +11,39 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+
+    - name: Compute variables
+      id: vars
+      run: |
+        $env:GITHUB_OUTPUT += "sha_short=" + (git rev-parse --short HEAD) + "`n"
+
+    - name: Set up CMake project
+      run: |
+        .\scripts\setup.ps1 `
+          -DCMAKE_BUILD_TYPE=Debug `
+          -DABIT_CI_BUILD=on
+
+    - name: Build project
+      run: |
+        .\scripts\build.ps1
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: AByteInTime-Debug-${{ steps.vars.outputs.sha_short }}
+        path: build/bin/Release
+
+  build-release:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Compute variables
+      id: vars
+      run: |
+        $env:GITHUB_OUTPUT += "sha_short=" + (git rev-parse --short HEAD) + "`n"
 
     - name: Set up CMake project
       run: |
@@ -24,7 +56,7 @@ jobs:
         .\scripts\build.ps1
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2.2.2
+      uses: actions/upload-artifact@v3
       with:
-        name: AByteInTime-unstable
+        name: AByteInTime-Release-${{ steps.vars.outputs.sha_short }}
         path: build/bin/Release
