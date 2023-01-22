@@ -15,16 +15,13 @@ jobs:
 
     - name: Set up CMake project
       run: |
-        mkdir build
-        cd build
-        cmake .. `
-          -DCMAKE_BUILD_TYPE=Release
+        .\scripts\setup.ps1 `
+          -DCMAKE_BUILD_TYPE=Release `
           -DABIT_CI_BUILD=on
 
     - name: Build project
       run: |
-        cd build
-        cmake --build .
+        .\scripts\build.ps1
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2.2.2
