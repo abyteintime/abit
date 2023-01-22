@@ -63,6 +63,6 @@ jobs:
         zip AByteInTime-win64.zip AByteInTime-Release-unstable/* -r
 
     - name: Upload artifact as release asset
-      uses: AButler/upload-release-asset@v2.0
+      uses: AButler/upload-release-assets@v2.0
       with:
         files: "AByteInTime-Release-unstable/*"
