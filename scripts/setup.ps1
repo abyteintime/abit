@@ -1,5 +1,7 @@
-Write-Output "Removing existing build directory"
-Remove-Item -Recurse -Path build
+if (Test-Path build) {
+	Write-Output "Removing existing build directory"
+	Remove-Item -Recurse -Path build
+}
 
 Write-Output "Setting up new build directory"
 New-Item -Path "build" -ItemType Directory
