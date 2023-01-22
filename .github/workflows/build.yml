@@ -54,11 +54,14 @@ jobs:
 
     steps:
     - name: Download release artifact
+      id: download-artifact
       uses: actions/download-artifact@v3
       with:
         name: AByteInTime-Release-unstable
 
     - name: Compress into zip file
+      env:
+        ABIT_PATH: ${{ steps.download-artifact.outputs.download-path }}
       run: |
         Compress-Archive -Path AByteInTime-Release-unstable -DestinationPath AByteInTime-win64.zip
 
@@ -66,3 +69,4 @@ jobs:
       uses: AButler/upload-release-assets@v2.0
       with:
         files: AByteInTime-win64.zip
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
