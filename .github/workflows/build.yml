@@ -60,9 +60,9 @@ jobs:
 
     - name: Compress into zip file
       run: |
-        zip AByteInTime-win64.zip AByteInTime-Release-unstable/* -r
+        Compress-Archive -Path AByteInTime-Release-unstable -DestinationPath AByteInTime-win64.zip
 
     - name: Upload artifact as release asset
       uses: AButler/upload-release-assets@v2.0
       with:
-        files: "AByteInTime-Release-unstable/*"
+        files: AByteInTime-win64.zip
