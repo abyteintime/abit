@@ -1,0 +1,68 @@
+name: Build project
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  release:
+    types: [created]
+
+jobs:
+  build-debug:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up and build project
+      run: |
+        .\scripts\setup.ps1 `
+          -DCMAKE_BUILD_TYPE=Debug `
+          -DABIT_CI_BUILD=on
+        .\scripts\build.ps1
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: AByteInTime-Debug-unstable
+        path: build/bin/Debug
+
+  build-release:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up and build project
+      run: |
+        .\scripts\setup.ps1 `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DABIT_CI_BUILD=on
+        .\scripts\build.ps1
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: AByteInTime-Release-unstable
+        path: build/bin/Release
+
+  upload-release:
+    runs-on: windows-2022
+    if: github.event_name == 'Release' && github.event.action == 'Created'
+    needs: [build-release]
+
+    steps:
+    - name: Download release artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: AByteInTime-Release-unstable
+
+    - name: Compress into zip file
+      run: |
+        zip AByteInTime-win64.zip AByteInTime-Release-unstable/* -r
+
+    - name: Upload artifact as release asset
+      uses: AButler/upload-release-asset@v2.0
+      with:
+        files: "AByteInTime-Release-unstable/*"
