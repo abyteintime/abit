@@ -16,7 +16,7 @@ jobs:
     - name: Compute variables
       id: vars
       run: |
-        $env:GITHUB_OUTPUT += "sha_short=" + (git rev-parse --short HEAD) + "`n"
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
     - name: Set up CMake project
       run: |
@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: AByteInTime-Debug-${{ steps.vars.outputs.sha_short }}
-        path: build/bin/Release
+        path: build/bin/Debug
 
   build-release:
     runs-on: windows-2022
