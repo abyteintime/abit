@@ -2,16 +2,6 @@
 
 A Hat in Time tweaking toolkit.
 
-## A word of warning
-
-At this stage ABiT is mostly a proof of concept. Expect major breakthroughs and major breaking
-changes.
-
-It is also not ready for general use. It has no testing suite, lacks releases and automated builds,
-so you will have to compile it manually from source.
-
-You have been warned.
-
 ## Why
 
 So you may be saying this to yourself at this point: "but uncle liquidex, the hat game already has
@@ -27,36 +17,32 @@ Which is where ABiT comes in.
 
 As mentioned already, ABiT is a tweaking toolkit for A Hat in Time. Its purpose is to expose the
 internals of the game such that **You** can play around with them in ways the developers never even
-thought of. Want to make the in-game speedrun timer display 4:20 at all times?
+considered possible. Want to make the in-game speedrun timer display 4:20 at all times?
 [Got you covered](src/mods/example_fourtwenty/). Wanna have Peace and Tranquility loop forever?
 [Take a look](src/gamemods/PeacefulAndTranquilForever/).
 
-ABiT is split into a few modules, each one fulfilling a single purpose:
+As a user (be it a player or a mod developer,) the most important components of ABiT are:
 
-- **The Launcher,** which handles starting the game up, and injecting into it a tiny lil' DLL called
-- **The Loader.** This piece of code is responsible for handling the basic logic of patching into
-  the game's code, and exposing that functionality to mod DLLs, which it loads before the game is
-  even ready to *think* about initializing anything.
-- **The Procs.** All of that is nice and dandy, but we actually need to know which functions to
-  patch into - as in, *where the heck they actually are in memory.* Unfortunately this task is made
-  quite difficult by the fact that HatinTimeGame.exe is... well, an .exe, and as such does not
-  export any symbols, so good ol' `GetProcAddress` is not going to cut it.
-  So, it's time to bring out The Big Guns.™ We use the innocuous little .pdb file that
-  ships next to the game's .exe, and bada bing, bada boom, *your symbols are now in my room.*
-  Using a Rust program, we read the .pdb to figure out where all the public symbols are; we demangle
-  them, and save their addresses into a .dll.
-  - Using an intermediate .dll allows us to have at least *some* level of cross-version
-    compatibility. The launcher, loader, and mods can potentially stay at the same version for many
-    updates to A Hat in Time, and you'll only need to replace `AByteInTime.Procs.dll` with each
-    update. Of course ABI compatibility is another thing, because the .dll does not contain any
-    information about function signatures, so if any of them changes, your mod crashes and burns
-    (and the game together with it.)
-- **The Yarnbox,** which is a mod built on ABiT to enable UnrealScript bytecode patching.
-  What Yarnbox does is similar to what [Fabric] does with [Mixin] - it allows you to patch arbitrary
-  pieces of bytecode with your own functions.
+- **The Loader,** which facilitates injecting custom behavior into the base game's C++ code,
+- **Yarnbox,** which facilitates injecting custom behavior into the game's UnrealScript code.
+  It is implemented as a native mod on top of the Loader.
 
-  [Fabric]: https://fabricmc.net/
-  [Mixin]: https://github.com/SpongePowered/Mixin
+ABiT should be considered a tool for tweaks and bug fixes. If you use it to cheat in any competitive
+setting I'll be very sad and disappointed.
+
+## Where
+
+You can download the latest release of ABiT [here](https://github.com/abyteintime/abit/releases).
+
+### A word of warning
+
+At this stage ABiT should be considered an alpha piece of software. Expect major breakthroughs and
+breaking changes.
+
+Being in alpha, it's ready for poking at, but expect crashes, rough edges, and lacks in
+documentation along the way.
+
+You have been warned.
 
 ## How
 
@@ -131,13 +117,13 @@ ABiT and Yarnbox ship with a few example mods that demonstrate what they can do.
 
 #### Native mods
 
-Native (ABiT) mods are built together with the loader, but disabled in the config. You can reenable
-them by removing these `+Disable` lines from `ByteinTime.ini`:
+Native example mods are bundled together with the loader, but disabled in the config. You can
+reenable them by removing these `+Disable` lines from `ByteinTime.ini`:
 
 ```ini
 [Mods]
 ; By default, all mods are enabled. Each mod can be disabled individually by using +Disable.
-+Disable=ExampleMod
++Disable=Example.HelloABiT
 +Disable=Example.FourTwenty
 ```
 
