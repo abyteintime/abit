@@ -2,6 +2,19 @@
 
 A Hat in Time tweaking toolkit.
 
+## IMPORTANT NOTE
+
+A Byte in Time (the toolkit) no longer works on current versions of the game. Gears for Breakfast
+removed HatinTimeGame.pdb from the game's directory, which this loader was relying on for finding out
+function locations.
+
+If you have a backup of a version of the game made before February 2023, you might be able to compile
+ABiT for it yourself. If you have a backup of the version released directly after the Christmas event
+update, the release binary will work on it out of the box.
+
+This renders the modding toolkit effectively useless for the vast majority of modders, but stay tuned!
+Follow the [ABiT organization](https://github.com/abyteintime) for more cool modding tools in the future.
+
 ## Why
 
 So you may be saying this to yourself at this point: "but uncle liquidex, the hat game already has
